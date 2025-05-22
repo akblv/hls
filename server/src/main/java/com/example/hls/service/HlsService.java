@@ -1,5 +1,6 @@
 package com.example.hls.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,13 @@ public class HlsService {
 
     private RestTemplate restTemplate;
 
+    private final SessionService sessionService;
+
+    @Autowired
+    public HlsService(SessionService sessionService) {
+        this.sessionService = sessionService;
+    }
+
     private final Map<String, UserSession> sessions = new ConcurrentHashMap<>();
 
     @PostConstruct
@@ -38,8 +46,12 @@ public class HlsService {
         return sessions.computeIfAbsent(userId, k -> new UserSession(freqSegments));
     }
 
-    public String getPlaylist(String streamName, String userId) {
-        String url = originBaseUrl + "/" + streamName + ".m3u8";
+    public String getPlaylist(String streamName, String quality, String userId) {
+        String base = originBaseUrl;
+        if (quality != null && !quality.isEmpty()) {
+            base += "/" + quality;
+        }
+        String url = base + "/" + streamName + ".m3u8";
         ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
         String playlist = response.getBody();
         if (playlist == null) {
@@ -51,7 +63,10 @@ public class HlsService {
             lines.add("#EXT-X-DISCONTINUITY");
             for (String ad : session.getNextAdSegments()) {
                 lines.add("#EXTINF:" + segmentDurationSeconds + ".0,");
-                lines.add("ads/" + ad);
+                String prefix = quality == null || quality.isEmpty()
+                        ? "ads/"
+                        : "../ads/" + quality + "/";
+                lines.add(prefix + ad);
             }
             lines.add("#EXT-X-DISCONTINUITY");
             session.markAdInserted();
@@ -59,18 +74,38 @@ public class HlsService {
         return String.join("\n", lines);
     }
 
-    public byte[] getSegment(String segmentName, String userId) {
-        String url = originBaseUrl + "/" + segmentName + ".ts";
+    public byte[] getSegment(String segmentName, String quality, String userId) {
+        String base = originBaseUrl;
+        if (quality != null && !quality.isEmpty()) {
+            base += "/" + quality;
+        }
+        String url = base + "/" + segmentName + ".ts";
         ResponseEntity<byte[]> response = restTemplate.getForEntity(url, byte[].class);
         UserSession session = getSession(userId);
         session.incrementSegments();
-        return response.getBody();
+        byte[] data = response.getBody();
+        int length = data == null ? 0 : data.length;
+        sessionService.updateMetrics(userId,
+                quality == null ? "" : quality,
+                segmentName + ".ts",
+                length);
+        return data;
     }
 
-    public byte[] getAdSegment(String segmentName) {
-        String url = adBaseUrl + "/" + segmentName + ".ts";
+    public byte[] getAdSegment(String segmentName, String quality, String userId) {
+        String base = adBaseUrl;
+        if (quality != null && !quality.isEmpty()) {
+            base += "/" + quality;
+        }
+        String url = base + "/" + segmentName + ".ts";
         ResponseEntity<byte[]> response = restTemplate.getForEntity(url, byte[].class);
-        return response.getBody();
+        byte[] data = response.getBody();
+        int length = data == null ? 0 : data.length;
+        sessionService.updateMetrics(userId,
+                quality == null ? "" : quality,
+                "ads/" + (quality == null || quality.isEmpty() ? "" : quality + "/") + segmentName + ".ts",
+                length);
+        return data;
     }
 
     private static class UserSession {

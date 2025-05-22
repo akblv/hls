@@ -33,7 +33,18 @@ public class HlsController {
     @GetMapping(path = "/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
     public ResponseEntity<String> getPlaylist(@PathVariable String name, javax.servlet.http.HttpServletRequest request) {
         String user = request.getRemoteAddr();
-        String body = hlsService.getPlaylist(name, user);
+        String body = hlsService.getPlaylist(name, "", user);
+        logger.debug("Playlist {}", body);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noCache())
+                .contentType(MediaType.valueOf("application/vnd.apple.mpegurl"))
+                .body(body);
+    }
+
+    @GetMapping(path = "/{quality}/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
+    public ResponseEntity<String> getPlaylistWithQuality(@PathVariable String quality, @PathVariable String name, javax.servlet.http.HttpServletRequest request) {
+        String user = request.getRemoteAddr();
+        String body = hlsService.getPlaylist(name, quality, user);
         logger.debug("Playlist {}", body);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
@@ -44,17 +55,38 @@ public class HlsController {
     @GetMapping(value = "/{segment}.ts", produces = "video/MP2T")
     public ResponseEntity<Resource> getSegment(@PathVariable String segment, javax.servlet.http.HttpServletRequest request) {
         String user = request.getRemoteAddr();
-        byte[] data = hlsService.getSegment(segment, user);
+        byte[] data = hlsService.getSegment(segment, "", user);
         logger.debug("Serving segment {}", segment);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
                 .body(new ByteArrayResource(data));
     }
 
+    @GetMapping(value = "/{quality}/{segment}.ts", produces = "video/MP2T")
+    public ResponseEntity<Resource> getSegmentWithQuality(@PathVariable String quality, @PathVariable String segment, javax.servlet.http.HttpServletRequest request) {
+        String user = request.getRemoteAddr();
+        byte[] data = hlsService.getSegment(segment, quality, user);
+        logger.debug("Serving segment {} for quality {}", segment, quality);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noCache())
+                .body(new ByteArrayResource(data));
+    }
+
     @GetMapping(value = "/ads/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getAdSegment(@PathVariable String segment) {
-        byte[] data = hlsService.getAdSegment(segment);
+    public ResponseEntity<Resource> getAdSegment(@PathVariable String segment, javax.servlet.http.HttpServletRequest request) {
+        String user = request.getRemoteAddr();
+        byte[] data = hlsService.getAdSegment(segment, "", user);
         logger.debug("Serving ad segment {}", segment);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noCache())
+                .body(new ByteArrayResource(data));
+    }
+
+    @GetMapping(value = "/ads/{quality}/{segment}.ts", produces = "video/MP2T")
+    public ResponseEntity<Resource> getAdSegmentWithQuality(@PathVariable String quality, @PathVariable String segment, javax.servlet.http.HttpServletRequest request) {
+        String user = request.getRemoteAddr();
+        byte[] data = hlsService.getAdSegment(segment, quality, user);
+        logger.debug("Serving ad segment {} for quality {}", segment, quality);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
                 .body(new ByteArrayResource(data));
