@@ -1,1 +1,0 @@
-ad segment 1
