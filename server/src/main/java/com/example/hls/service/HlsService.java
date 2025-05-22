@@ -21,7 +21,9 @@ public class HlsService {
     @Value("${hls.ad-frequency-minutes:2}")
     private int adFrequencyMinutes;
 
-    /** approximate duration of each segment in seconds */
+    /**
+     * approximate duration of each segment in seconds
+     */
     @Value("${hls.segment-duration-seconds:5}")
     private int segmentDurationSeconds;
 
@@ -47,10 +49,7 @@ public class HlsService {
     }
 
     public String getPlaylist(String streamName, String quality, String userId) {
-        String base = originBaseUrl;
-        if (quality != null && !quality.isEmpty()) {
-            base += "/" + quality;
-        }
+        String base = buildQualityPath(originBaseUrl, quality);
         String url = base + "/" + streamName + ".m3u8";
         ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
         String playlist = response.getBody();
@@ -75,12 +74,7 @@ public class HlsService {
     }
 
     public byte[] getSegment(String segmentName, String quality, String userId) {
-        String base = originBaseUrl;
-        if (quality != null && !quality.isEmpty()) {
-            base += "/" + quality;
-        }
-        String url = base + "/" + segmentName + ".ts";
-        ResponseEntity<byte[]> response = restTemplate.getForEntity(url, byte[].class);
+        ResponseEntity<byte[]> response = downloadChunk(originBaseUrl, quality, segmentName);
         UserSession session = getSession(userId);
         session.incrementSegments();
         byte[] data = response.getBody();
@@ -92,20 +86,33 @@ public class HlsService {
         return data;
     }
 
-    public byte[] getAdSegment(String segmentName, String quality, String userId) {
-        String base = adBaseUrl;
-        if (quality != null && !quality.isEmpty()) {
-            base += "/" + quality;
+    private ResponseEntity<byte[]> downloadChunk(String originBaseUrl, String quality, String segmentName) {
+        String url = buildSegmentPath(originBaseUrl, quality, segmentName);
+        return restTemplate.getForEntity(url, byte[].class);
+    }
+
+    private String buildQualityPath(String originBaseUrl, String quality) {
+        String base = originBaseUrl;
+        if (Objects.nonNull(quality) && !quality.isEmpty()) {
+            base += String.format("/%s", quality);
         }
-        String url = base + "/" + segmentName + ".ts";
-        ResponseEntity<byte[]> response = restTemplate.getForEntity(url, byte[].class);
+        return base;
+    }
+
+    public byte[] getAdSegment(String segmentName, String quality, String userId) {
+        ResponseEntity<byte[]> response = downloadChunk(adBaseUrl, quality, segmentName);
         byte[] data = response.getBody();
         int length = data == null ? 0 : data.length;
         sessionService.updateMetrics(userId,
-                quality == null ? "" : quality,
-                "ads/" + (quality == null || quality.isEmpty() ? "" : quality + "/") + segmentName + ".ts",
+                Optional.ofNullable(quality).orElse(""),
+                buildSegmentPath("ads", segmentName, quality),
                 length);
+
         return data;
+    }
+
+    private String buildSegmentPath(String basePath, String segmentName, String quality) {
+        return buildQualityPath(basePath, quality) + "/" + segmentName + ".ts";
     }
 
     private static class UserSession {
