@@ -1,5 +1,6 @@
 package com.example.hls;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.example.hls.service.HlsService;
@@ -31,7 +32,7 @@ public class HlsController {
      * Return the playlist with a simple advertisement insertion after every third segment.
      */
     @GetMapping(path = "/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<String> getPlaylist(@PathVariable String name, javax.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<String> getPlaylist(@PathVariable String name, HttpServletRequest request) {
         String user = request.getRemoteAddr();
         String body = hlsService.getPlaylist(name, "", user);
         logger.debug("Playlist {}", body);
@@ -42,7 +43,7 @@ public class HlsController {
     }
 
     @GetMapping(path = "/{quality}/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<String> getPlaylistWithQuality(@PathVariable String quality, @PathVariable String name, javax.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<String> getPlaylistWithQuality(@PathVariable String quality, @PathVariable String name, HttpServletRequest request) {
         String user = request.getRemoteAddr();
         String body = hlsService.getPlaylist(name, quality, user);
         logger.debug("Playlist {}", body);
@@ -53,7 +54,7 @@ public class HlsController {
     }
 
     @GetMapping(value = "/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getSegment(@PathVariable String segment, javax.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<Resource> getSegment(@PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
         byte[] data = hlsService.getSegment(segment, "", user);
         logger.debug("Serving segment {}", segment);
@@ -63,7 +64,7 @@ public class HlsController {
     }
 
     @GetMapping(value = "/{quality}/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getSegmentWithQuality(@PathVariable String quality, @PathVariable String segment, javax.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<Resource> getSegmentWithQuality(@PathVariable String quality, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
         byte[] data = hlsService.getSegment(segment, quality, user);
         logger.debug("Serving segment {} for quality {}", segment, quality);
@@ -73,7 +74,7 @@ public class HlsController {
     }
 
     @GetMapping(value = "/ads/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getAdSegment(@PathVariable String segment, javax.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<Resource> getAdSegment(@PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
         byte[] data = hlsService.getAdSegment(segment, "", user);
         logger.debug("Serving ad segment {}", segment);
@@ -83,7 +84,7 @@ public class HlsController {
     }
 
     @GetMapping(value = "/ads/{quality}/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getAdSegmentWithQuality(@PathVariable String quality, @PathVariable String segment, javax.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<Resource> getAdSegmentWithQuality(@PathVariable String quality, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
         byte[] data = hlsService.getAdSegment(segment, quality, user);
         logger.debug("Serving ad segment {} for quality {}", segment, quality);
