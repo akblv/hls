@@ -2,6 +2,7 @@ package com.example.hls;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -11,6 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.example.hls.service.SessionService;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
@@ -25,8 +29,15 @@ import java.util.List;
 public class HlsController {
     private static final Logger logger = LoggerFactory.getLogger(HlsController.class);
 
+    private final SessionService sessionService;
+
     @Value("${hls.base-path}")
     private String basePath;
+
+    @Autowired
+    public HlsController(SessionService sessionService) {
+        this.sessionService = sessionService;
+    }
 
     /**
      * Return the playlist inserting an advertisement block every two minutes of
@@ -34,7 +45,11 @@ public class HlsController {
      * (15 seconds total).
      */
     @GetMapping(path = "/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<String> getPlaylist(@PathVariable String name) throws IOException {
+    public ResponseEntity<String> getPlaylist(
+            @PathVariable String name,
+            @RequestParam("session") String sessionId,
+            @RequestParam(value = "quality", defaultValue = "default") String quality) throws IOException {
+        sessionService.getSession(sessionId);
         Path playlistPath = Paths.get(basePath, name + ".m3u8");
         List<String> original = Files.readAllLines(playlistPath);
         List<String> modified = new ArrayList<>();
@@ -69,18 +84,27 @@ public class HlsController {
     }
 
     @GetMapping(value = "/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getSegment(@PathVariable String segment) throws IOException {
+    public ResponseEntity<Resource> getSegment(
+            @PathVariable String segment,
+            @RequestParam("session") String sessionId,
+            @RequestParam(value = "quality", defaultValue = "default") String quality) throws IOException {
         Path path = Paths.get(basePath, segment + ".ts");
         logger.debug("Serving segment {}", path);
+        long bytes = Files.size(path);
+        sessionService.updateMetrics(sessionId, quality, segment + ".ts", bytes);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
                 .body(new FileSystemResource(path));
     }
 
     @GetMapping(value = "/ads/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getAdSegment(@PathVariable String segment) throws IOException {
+    public ResponseEntity<Resource> getAdSegment(
+            @PathVariable String segment,
+            @RequestParam("session") String sessionId) throws IOException {
         Path path = Paths.get(basePath, "ads", segment + ".ts");
         logger.debug("Serving ad segment {}", path);
+        long bytes = Files.size(path);
+        sessionService.updateMetrics(sessionId, "ad", segment + ".ts", bytes);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
                 .body(new FileSystemResource(path));
