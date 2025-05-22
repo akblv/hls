@@ -23,5 +23,9 @@ mvn spring-boot:run
 ```
 
 Requests to `/hls/{stream}.m3u8` and `/hls/{segment}.ts` will be fetched from the
-origin server. After a user has streamed for the configured duration, the playlist
-returned to that user will contain a discontinuity and three ad segments.
+origin server. You can also request a specific quality using
+`/hls/{quality}/{stream}.m3u8` and `/hls/{quality}/{segment}.ts`.
+Ad segments are available per quality at `/hls/ads/{quality}/{segment}.ts`.
+After a user has streamed for the configured duration, the playlist returned to
+that user will contain a discontinuity and three ad segments of the requested
+quality.
