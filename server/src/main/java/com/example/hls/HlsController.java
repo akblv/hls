@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.example.hls.service.HlsService;
+import com.example.hls.service.session.SessionTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
@@ -22,17 +23,26 @@ public class HlsController {
     private static final Logger logger = LoggerFactory.getLogger(HlsController.class);
 
     private final HlsService hlsService;
+    private final SessionTokenService tokenService;
 
     @Autowired
-    public HlsController(HlsService hlsService) {
+    public HlsController(HlsService hlsService, SessionTokenService tokenService) {
         this.hlsService = hlsService;
+        this.tokenService = tokenService;
     }
 
     /**
      * Return the playlist with a simple advertisement insertion after every third segment.
      */
     @GetMapping(path = "/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<String> getPlaylist(@PathVariable String name, HttpServletRequest request) {
+    public ResponseEntity<?> getPlaylist(@PathVariable String name, HttpServletRequest request) {
+        String token = request.getParameter("zt");
+        if (!tokenService.isValid(token, name)) {
+            String newToken = tokenService.generateToken(name);
+            String url = request.getRequestURL().toString() + "?zt=" + newToken;
+            return ResponseEntity.status(307).header("Location", url).build();
+        }
+
         String user = request.getRemoteAddr();
         String body = hlsService.getPlaylist(name, "", user);
         logger.debug("Playlist {}", body);
@@ -43,7 +53,14 @@ public class HlsController {
     }
 
     @GetMapping(path = "/{quality}/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<String> getPlaylistWithQuality(@PathVariable String quality, @PathVariable String name, HttpServletRequest request) {
+    public ResponseEntity<?> getPlaylistWithQuality(@PathVariable String quality, @PathVariable String name, HttpServletRequest request) {
+        String token = request.getParameter("zt");
+        if (!tokenService.isValid(token, name)) {
+            String newToken = tokenService.generateToken(name);
+            String url = request.getRequestURL().toString() + "?zt=" + newToken;
+            return ResponseEntity.status(307).header("Location", url).build();
+        }
+
         String user = request.getRemoteAddr();
         String body = hlsService.getPlaylist(name, quality, user);
         logger.debug("Playlist {}", body);
