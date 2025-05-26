@@ -1,6 +1,8 @@
 package com.example.hls.service;
 
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class HlsService {
+    private static final Logger logger = LoggerFactory.getLogger(HlsService.class);
     @Value("${hls.origin-base-url}")
     private String originBaseUrl;
 
@@ -88,6 +91,7 @@ public class HlsService {
 
     private ResponseEntity<byte[]> downloadChunk(String originBaseUrl, String quality, String segmentName) {
         String url = buildSegmentPath(originBaseUrl, quality, segmentName);
+        logger.debug("Downloading chunk {}", url);
         return restTemplate.getForEntity(url, byte[].class);
     }
 

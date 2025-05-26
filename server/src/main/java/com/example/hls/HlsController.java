@@ -11,14 +11,13 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 
 @RestController
-@RequestMapping("/hls")
+@RequestMapping("/live/stream")
 public class HlsController {
     private static final Logger logger = LoggerFactory.getLogger(HlsController.class);
 
@@ -31,17 +30,31 @@ public class HlsController {
         this.tokenService = tokenService;
     }
 
+
+    @PostMapping("/validate")
+    public ResponseEntity<Void> validate(@RequestParam Map<String, String> params) {
+        logger.info("Validating key {}", params);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/done")
+    public ResponseEntity<Void> done(@RequestParam Map<String, String> params) {
+        logger.info("Stream ended {}", params);
+        return ResponseEntity.ok().build();
+
+    }
+
     /**
      * Return the playlist with a simple advertisement insertion after every third segment.
      */
     @GetMapping(path = "/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
     public ResponseEntity<?> getPlaylist(@PathVariable String name, HttpServletRequest request) {
-        String token = request.getParameter("zt");
-        if (!tokenService.isValid(token, name)) {
-            String newToken = tokenService.generateToken(name);
-            String url = request.getRequestURL().toString() + "?zt=" + newToken;
-            return ResponseEntity.status(307).header("Location", url).build();
-        }
+//        String token = request.getParameter("zt");
+//        if (!tokenService.isValid(token, name)) {
+//            String newToken = tokenService.generateToken(name);
+//            String url = request.getRequestURL().toString() + "?zt=" + newToken;
+//            return ResponseEntity.status(307).header("Location", url).build();
+//        }
 
         String user = request.getRemoteAddr();
         String body = hlsService.getPlaylist(name, "", user);
@@ -54,12 +67,12 @@ public class HlsController {
 
     @GetMapping(path = "/{quality}/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
     public ResponseEntity<?> getPlaylistWithQuality(@PathVariable String quality, @PathVariable String name, HttpServletRequest request) {
-        String token = request.getParameter("zt");
-        if (!tokenService.isValid(token, name)) {
-            String newToken = tokenService.generateToken(name);
-            String url = request.getRequestURL().toString() + "?zt=" + newToken;
-            return ResponseEntity.status(307).header("Location", url).build();
-        }
+//        String token = request.getParameter("zt");
+//        if (!tokenService.isValid(token, name)) {
+//            String newToken = tokenService.generateToken(name);
+//            String url = request.getRequestURL().toString() + "?zt=" + newToken;
+//            return ResponseEntity.status(307).header("Location", url).build();
+//        }
 
         String user = request.getRemoteAddr();
         String body = hlsService.getPlaylist(name, quality, user);
