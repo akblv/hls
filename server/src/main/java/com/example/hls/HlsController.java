@@ -54,8 +54,8 @@ public class HlsController {
     /**
      * Return the playlist with a simple advertisement insertion after every third segment.
      */
-    @GetMapping(path = "/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<?> getPlaylist(@PathVariable String name, HttpServletRequest request) {
+    @GetMapping(path = "/{stream}/{playlist}.m3u8", produces = "application/vnd.apple.mpegurl")
+    public ResponseEntity<?> getPlaylist(@PathVariable String stream, @PathVariable String playlist, HttpServletRequest request) {
 //        String token = request.getParameter("zt");
 //        if (!tokenService.isValid(token, name)) {
 //            String newToken = tokenService.generateToken(name);
@@ -64,7 +64,7 @@ public class HlsController {
 //        }
 
         String user = request.getRemoteAddr();
-        String body = hlsService.getPlaylist(name, "", user);
+        String body = hlsService.getPlaylist(stream, playlist, "", user);
         logger.debug("Playlist {}", body);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
@@ -72,8 +72,8 @@ public class HlsController {
                 .body(body);
     }
 
-    @GetMapping(path = "/{quality}/{name}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<?> getPlaylistWithQuality(@PathVariable String quality, @PathVariable String name, HttpServletRequest request) {
+    @GetMapping(path = "{stream}/{quality}/{playlist}.m3u8", produces = "application/vnd.apple.mpegurl")
+    public ResponseEntity<?> getPlaylistWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String playlist, HttpServletRequest request) {
 //        String token = request.getParameter("zt");
 //        if (!tokenService.isValid(token, name)) {
 //            String newToken = tokenService.generateToken(name);
@@ -82,7 +82,7 @@ public class HlsController {
 //        }
 
         String user = request.getRemoteAddr();
-        String body = hlsService.getPlaylist(name, quality, user);
+        String body = hlsService.getPlaylist(stream, playlist, quality, user);
         logger.debug("Playlist {}", body);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
@@ -90,20 +90,20 @@ public class HlsController {
                 .body(body);
     }
 
-    @GetMapping(value = "/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getSegment(@PathVariable String segment, HttpServletRequest request) {
+    @GetMapping(value = "{stream}/{segment}.ts", produces = "video/MP2T")
+    public ResponseEntity<Resource> getSegment(@PathVariable String stream, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
-        byte[] data = hlsService.getSegment(segment, "", user);
+        byte[] data = hlsService.getSegment(stream, segment, "", user);
         logger.debug("Serving segment {}", segment);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
                 .body(new ByteArrayResource(data));
     }
 
-    @GetMapping(value = "/{quality}/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getSegmentWithQuality(@PathVariable String quality, @PathVariable String segment, HttpServletRequest request) {
+    @GetMapping(value = "{stream}/{quality}/{segment}.ts", produces = "video/MP2T")
+    public ResponseEntity<Resource> getSegmentWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
-        byte[] data = hlsService.getSegment(segment, quality, user);
+        byte[] data = hlsService.getSegment(stream, segment, quality, user);
         logger.debug("Serving segment {} for quality {}", segment, quality);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())

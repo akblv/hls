@@ -51,16 +51,17 @@ public class HlsService {
         return sessions.computeIfAbsent(userId, k -> new UserSession(freqSegments));
     }
 
-    public String getPlaylist(String streamName, String quality, String userId) {
-        String base = buildQualityPath(originBaseUrl, quality);
-        String url = base + "/" + streamName + ".m3u8";
+    public String getPlaylist(String streamName, String playlist, String quality, String userId) {
+        String baseUrl = String.format(String.format("%s/%s", originBaseUrl, streamName));
+        String base = buildQualityPath(baseUrl, quality);
+        String url = base + "/" + playlist + ".m3u8";
         ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-        String playlist = response.getBody();
-        if (playlist == null) {
+        String m3u8 = response.getBody();
+        if (m3u8 == null) {
             return "";
         }
         UserSession session = getSession(userId);
-        List<String> lines = new ArrayList<>(Arrays.asList(playlist.split("\n")));
+        List<String> lines = new ArrayList<>(Arrays.asList(m3u8.split("\n")));
         if (session.shouldInsertAd()) {
             lines.add("#EXT-X-DISCONTINUITY");
             for (String ad : session.getNextAdSegments()) {
@@ -76,8 +77,9 @@ public class HlsService {
         return String.join("\n", lines);
     }
 
-    public byte[] getSegment(String segmentName, String quality, String userId) {
-        ResponseEntity<byte[]> response = downloadChunk(originBaseUrl, quality, segmentName);
+    public byte[] getSegment(String stream, String segmentName, String quality, String userId) {
+        String baseUrl = String.format(String.format("%s/%s", originBaseUrl, stream));
+        ResponseEntity<byte[]> response = downloadChunk(baseUrl, quality, segmentName);
         UserSession session = getSession(userId);
         session.incrementSegments();
         byte[] data = response.getBody();
@@ -100,6 +102,7 @@ public class HlsService {
         if (Objects.nonNull(quality) && !quality.isEmpty()) {
             base += String.format("/%s", quality);
         }
+        logger.debug("Building quality path {}", base);
         return base;
     }
 
@@ -115,8 +118,8 @@ public class HlsService {
         return data;
     }
 
-    private String buildSegmentPath(String basePath, String segmentName, String quality) {
-        return buildQualityPath(basePath, quality) + "/" + segmentName + ".ts";
+    private String buildSegmentPath(String basePath, String quality, String segmentName) {
+        return String.format( "%s/%s.ts", buildQualityPath(basePath, quality), segmentName);
     }
 
     private static class UserSession {
