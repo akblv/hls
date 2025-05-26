@@ -11,7 +11,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -34,30 +33,20 @@ class HlsControllerTests {
 
     @BeforeEach
     void setup() {
-        when(hlsService.getPlaylist(anyString(), anyString(), anyString())).thenReturn("playlist");
-        when(tokenService.generateToken(anyString())).thenReturn("newtoken");
-        when(tokenService.isValid(isNull(), anyString())).thenReturn(false);
-        when(tokenService.isValid(anyString(), anyString())).thenReturn(false);
-        when(tokenService.isValid(eq("validtoken"), anyString())).thenReturn(true);
+        when(hlsService.getPlaylist(anyString(), anyString(), anyString(), anyString()))
+                .thenReturn("playlist");
     }
 
     @Test
-    void redirectsWhenTokenMissing() throws Exception {
-        mockMvc.perform(get("/hls/foo.m3u8"))
-                .andExpect(status().isTemporaryRedirect())
-                .andExpect(header().string("Location", startsWith("http://localhost/hls/foo.m3u8?zt=")));
+    void returnsPlaylist() throws Exception {
+        mockMvc.perform(get("/live/stream/foo/playlist.m3u8"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("playlist"));
     }
 
     @Test
-    void redirectsWhenTokenInvalid() throws Exception {
-        mockMvc.perform(get("/hls/foo.m3u8").param("zt", "bad"))
-                .andExpect(status().isTemporaryRedirect())
-                .andExpect(header().string("Location", startsWith("http://localhost/hls/foo.m3u8?zt=")));
-    }
-
-    @Test
-    void returnsPlaylistWhenTokenValid() throws Exception {
-        mockMvc.perform(get("/hls/foo.m3u8").param("zt", "validtoken"))
+    void returnsPlaylistWithQuality() throws Exception {
+        mockMvc.perform(get("/live/stream/foo/720p/playlist.m3u8"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("playlist"));
     }
