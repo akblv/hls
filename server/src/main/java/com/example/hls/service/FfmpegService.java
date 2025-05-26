@@ -23,9 +23,26 @@ public class FfmpegService {
     private String outputPath;
 
     public void startTranscoding(NginxRtmpRequest request) {
+        startVideoTranscoding(request);
+    }
+
+    /**
+     * Starts transcoding a video + audio stream into HLS.
+     */
+    public void startVideoTranscoding(NginxRtmpRequest request) {
         String inputUrl = request.tcurl() + "/" + request.name();
         String streamOutput = String.format("%s/%s", outputPath, request.name());
         List<String> cmd = buildCommand(inputUrl, streamOutput);
+        runAsync(cmd);
+    }
+
+    /**
+     * Starts transcoding an audio only stream into HLS.
+     */
+    public void startAudioTranscoding(NginxRtmpRequest request) {
+        String inputUrl = request.tcurl() + "/" + request.name();
+        String streamOutput = String.format("%s/%s", outputPath, request.name());
+        List<String> cmd = buildAudioCommand(inputUrl, streamOutput);
         runAsync(cmd);
     }
 
@@ -70,6 +87,42 @@ public class FfmpegService {
         command.add("-master_pl_name"); command.add("master.m3u8");
         command.add("-hls_segment_filename");
         command.add(String.format("%s/%%v/segment_%%03d.ts", streamPath));
+        command.add("-f"); command.add("hls");
+        command.add("-hls_time"); command.add("4");
+        command.add("-hls_flags"); command.add("delete_segments+append_list+independent_segments");
+        command.add("-hls_list_size"); command.add("8");
+        command.add(String.format("%s/%%v/playlist.m3u8", streamPath));
+        return command;
+    }
+
+    private List<String> buildAudioCommand(String inputUrl, String streamPath) {
+        List<String> command = new ArrayList<>();
+        command.add("ffmpeg");
+        // duplicate input for each quality
+        command.add("-i"); command.add(inputUrl);
+        command.add("-i"); command.add(inputUrl);
+        command.add("-i"); command.add(inputUrl);
+
+        // high quality
+        command.add("-map"); command.add("0:a");
+        command.add("-c:a:0"); command.add("aac");
+        command.add("-b:a:0"); command.add("192k");
+
+        // medium quality
+        command.add("-map"); command.add("1:a");
+        command.add("-c:a:1"); command.add("aac");
+        command.add("-b:a:1"); command.add("128k");
+
+        // low quality
+        command.add("-map"); command.add("2:a");
+        command.add("-c:a:2"); command.add("aac");
+        command.add("-b:a:2"); command.add("64k");
+
+        command.add("-var_stream_map");
+        command.add("a:0,name:high a:1,name:medium a:2,name:low");
+        command.add("-master_pl_name"); command.add("master.m3u8");
+        command.add("-hls_segment_filename");
+        command.add(String.format("%s/%%v/segment_%%03d.aac", streamPath));
         command.add("-f"); command.add("hls");
         command.add("-hls_time"); command.add("4");
         command.add("-hls_flags"); command.add("delete_segments+append_list+independent_segments");
