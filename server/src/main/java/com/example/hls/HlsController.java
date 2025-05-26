@@ -3,7 +3,9 @@ package com.example.hls;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.example.hls.model.NginxRtmpRequest;
 import com.example.hls.service.HlsService;
+import com.example.hls.service.FfmpegService;
 import com.example.hls.service.session.SessionTokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
@@ -23,17 +25,22 @@ public class HlsController {
 
     private final HlsService hlsService;
     private final SessionTokenService tokenService;
+    private final FfmpegService ffmpegService;
 
     @Autowired
-    public HlsController(HlsService hlsService, SessionTokenService tokenService) {
+    public HlsController(HlsService hlsService, SessionTokenService tokenService, FfmpegService ffmpegService) {
         this.hlsService = hlsService;
         this.tokenService = tokenService;
+        this.ffmpegService = ffmpegService;
     }
 
 
     @PostMapping("/validate")
     public ResponseEntity<Void> validate(@RequestParam Map<String, String> params) {
-        logger.info("Validating key {}", params);
+        NginxRtmpRequest request = new NginxRtmpRequest(params);
+        logger.info("Validating key {}", request);
+        // start transcoding asynchronously after acknowledging the publish
+        ffmpegService.startTranscoding(request);
         return ResponseEntity.ok().build();
     }
 

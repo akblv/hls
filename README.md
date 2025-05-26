@@ -3,6 +3,8 @@
 This Spring Boot project demonstrates how to proxy HLS playlists and segments from a
 remote origin while inserting ad breaks.
 
+Requires **Java 21** to build and run.
+
 ### Configuration
 
 Edit `server/src/main/resources/application.properties` to point to your origin
@@ -13,7 +15,10 @@ hls.origin-base-url=http://localhost:8081/hls
 # hls.ad-base-url=http://localhost:8081/hls/ads
 hls.ad-frequency-minutes=2
 hls.segment-duration-seconds=5
+transcoder.output-path=live
 ```
+The configured `transcoder.output-path` will be combined with the stream name so
+HLS files are written under `<output-path>/<stream-name>`.
 
 ### Running
 
