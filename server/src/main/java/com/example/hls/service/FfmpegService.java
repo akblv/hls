@@ -45,21 +45,21 @@ public class FfmpegService {
         command.add("-sc_threshold"); command.add("0");
         command.add("-keyint_min"); command.add("48");
 
-        // 360p
-        command.add("-map"); command.add("0:v");
-        command.add("-s:v:1"); command.add("640x360");
-        command.add("-c:v:1"); command.add("libx264");
-        command.add("-b:v:1"); command.add("800k");
-        command.add("-preset"); command.add("veryfast");
-        command.add("-g"); command.add("48");
-        command.add("-sc_threshold"); command.add("0");
-        command.add("-keyint_min"); command.add("48");
-
         // 480p
         command.add("-map"); command.add("0:v");
         command.add("-s:v:2"); command.add("854x480");
         command.add("-c:v:2"); command.add("libx264");
         command.add("-b:v:2"); command.add("1400k");
+        command.add("-preset"); command.add("veryfast");
+        command.add("-g"); command.add("48");
+        command.add("-sc_threshold"); command.add("0");
+        command.add("-keyint_min"); command.add("48");
+
+        // 360p
+        command.add("-map"); command.add("0:v");
+        command.add("-s:v:1"); command.add("640x360");
+        command.add("-c:v:1"); command.add("libx264");
+        command.add("-b:v:1"); command.add("800k");
         command.add("-preset"); command.add("veryfast");
         command.add("-g"); command.add("48");
         command.add("-sc_threshold"); command.add("0");
