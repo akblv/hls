@@ -10,8 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import com.example.hls.model.Session;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 public class HlsService {
@@ -40,16 +40,14 @@ public class HlsService {
         this.sessionService = sessionService;
     }
 
-    private final Map<String, UserSession> sessions = new ConcurrentHashMap<>();
-
     @PostConstruct
     public void init() {
         restTemplate = new RestTemplate();
     }
 
-    private UserSession getSession(String userId) {
+    private Session getSession(String userId) {
         int freqSegments = (adFrequencyMinutes * 60) / segmentDurationSeconds;
-        return sessions.computeIfAbsent(userId, k -> new UserSession(freqSegments));
+        return sessionService.getSession(userId, freqSegments);
     }
 
     public String getPlaylist(String streamName, String playlist, String quality, String userId) {
@@ -61,7 +59,7 @@ public class HlsService {
         if (m3u8 == null) {
             return "";
         }
-        UserSession session = getSession(userId);
+        Session session = getSession(userId);
         List<String> lines = new ArrayList<>(Arrays.asList(m3u8.split("\n")));
         if (session.shouldInsertAd()) {
             lines.add("#EXT-X-DISCONTINUITY");
@@ -79,7 +77,7 @@ public class HlsService {
     public byte[] getSegment(String stream, String segmentName, String quality, String userId) {
         String baseUrl = String.format(String.format("%s/%s", originBaseUrl, stream));
         ResponseEntity<byte[]> response = downloadChunk(baseUrl, quality, segmentName);
-        UserSession session = getSession(userId);
+        Session session = getSession(userId);
         session.incrementSegments();
         byte[] data = response.getBody();
         int length = data == null ? 0 : data.length;
@@ -121,34 +119,4 @@ public class HlsService {
         return String.format("%s/%s.ts", buildQualityPath(basePath, quality), segmentName);
     }
 
-    private static class UserSession {
-        private final int frequencySegments;
-        private int segmentsServed = 0;
-        private boolean adDue = false;
-        private final List<String> adSegments = Arrays.asList("ad-0.ts", "ad-1.ts", "ad-2.ts");
-
-        UserSession(int frequencySegments) {
-            this.frequencySegments = Math.max(1, frequencySegments);
-        }
-
-        void incrementSegments() {
-            segmentsServed++;
-            if (segmentsServed >= frequencySegments && !adDue) {
-                adDue = true;
-            }
-        }
-
-        boolean shouldInsertAd() {
-            return adDue;
-        }
-
-        List<String> getNextAdSegments() {
-            return adSegments;
-        }
-
-        void markAdInserted() {
-            adDue = false;
-            segmentsServed = 0;
-        }
-    }
 }
