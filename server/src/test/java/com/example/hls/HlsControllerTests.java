@@ -1,6 +1,7 @@
 package com.example.hls;
 
 import com.example.hls.service.HlsService;
+import com.example.hls.service.FfmpegService;
 import com.example.hls.service.session.SessionTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,9 @@ class HlsControllerTests {
 
     @MockBean
     private SessionTokenService tokenService;
+
+    @MockBean
+    private FfmpegService ffmpegService;
 
     @BeforeEach
     void setup() {
