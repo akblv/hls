@@ -18,7 +18,15 @@ public class SessionService {
      * Returns the session for the given id, creating it if necessary.
      */
     public Session getSession(String sessionId) {
-        return sessions.computeIfAbsent(sessionId, id -> new Session());
+        return getSession(sessionId, 0);
+    }
+
+    /**
+     * Returns the session for the given id, creating it with the provided
+     * frequency if necessary.
+     */
+    public Session getSession(String sessionId, int frequencySegments) {
+        return sessions.computeIfAbsent(sessionId, id -> new Session(frequencySegments));
     }
 
     /**
