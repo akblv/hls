@@ -20,9 +20,6 @@ public class Session {
     private boolean adDue = false;
     private final List<String> adSegments = List.of("ad-0.ts", "ad-1.ts", "ad-2.ts");
 
-    public Session() {
-        this(0);
-    }
 
     public Session(int frequencySegments) {
         this.startTime = Instant.now();

@@ -19,7 +19,7 @@ public class HlsService {
     @Value("${hls.origin-base-url}")
     private String originBaseUrl;
 
-    @Value("${hls.ad-base-url:${hls.origin-base-url}/ads}")
+    @Value("${hls.ad-base-url}")
     private String adBaseUrl;
 
     @Value("${hls.ad-frequency-minutes:2}")
@@ -46,7 +46,8 @@ public class HlsService {
     }
 
     private Session getSession(String userId) {
-        int freqSegments = (adFrequencyMinutes * 60) / segmentDurationSeconds;
+//        int freqSegments = (adFrequencyMinutes * 60) / segmentDurationSeconds;
+        int freqSegments = (adFrequencyMinutes * 10) / segmentDurationSeconds;
         return sessionService.getSession(userId, freqSegments);
     }
 
@@ -61,7 +62,7 @@ public class HlsService {
         }
         Session session = getSession(userId);
         List<String> lines = new ArrayList<>(Arrays.asList(m3u8.split("\n")));
-        if (session.shouldInsertAd()) {
+        if (session.shouldInsertAd() && !playlist.equals("master.m3u8")) {
             lines.add("#EXT-X-DISCONTINUITY");
             session.getNextAdSegments().forEach(ad -> {
                 lines.add("#EXTINF:" + segmentDurationSeconds + ".0,");
@@ -70,6 +71,8 @@ public class HlsService {
             });
             lines.add("#EXT-X-DISCONTINUITY");
             session.markAdInserted();
+
+            logger.info("Insert ad segments into session, {}", String.join("\n", lines));
         }
         return String.join("\n", lines);
     }
@@ -81,8 +84,7 @@ public class HlsService {
         session.incrementSegments();
         byte[] data = response.getBody();
         int length = data == null ? 0 : data.length;
-        sessionService.updateMetrics(userId,
-                quality == null ? "" : quality,
+        sessionService.updateMetrics(userId, StringUtil.isNullOrEmpty(quality) ? "" : quality,
                 segmentName + ".ts",
                 length);
         return data;
@@ -104,6 +106,7 @@ public class HlsService {
     }
 
     public byte[] getAdSegment(String segmentName, String quality, String userId) {
+
         ResponseEntity<byte[]> response = downloadChunk(adBaseUrl, quality, segmentName);
         byte[] data = response.getBody();
         int length = data == null ? 0 : data.length;

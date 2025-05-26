@@ -110,8 +110,8 @@ public class HlsController {
                 .body(new ByteArrayResource(data));
     }
 
-    @GetMapping(value = "/ads/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getAdSegment(@PathVariable String segment, HttpServletRequest request) {
+    @GetMapping(value = "{stream}/{quality}/ads/{segment}.ts", produces = "video/MP2T")
+    public ResponseEntity<Resource> getAdSegment(@PathVariable String stream, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
         byte[] data = hlsService.getAdSegment(segment, "", user);
         logger.debug("Serving ad segment {}", segment);
@@ -120,11 +120,11 @@ public class HlsController {
                 .body(new ByteArrayResource(data));
     }
 
-    @GetMapping(value = "/ads/{quality}/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getAdSegmentWithQuality(@PathVariable String quality, @PathVariable String segment, HttpServletRequest request) {
+    @GetMapping(value = "{stream}/{quality}/ads/{ad_quality}/{segment}.ts", produces = "video/MP2T")
+    public ResponseEntity<Resource> getAdSegmentWithQuality(@PathVariable String stream, @PathVariable String ad_quality, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
-        byte[] data = hlsService.getAdSegment(segment, quality, user);
-        logger.debug("Serving ad segment {} for quality {}", segment, quality);
+        byte[] data = hlsService.getAdSegment(segment, ad_quality, user);
+        logger.debug("Serving ad segment {} for quality {}", segment, ad_quality);
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache())
                 .body(new ByteArrayResource(data));
