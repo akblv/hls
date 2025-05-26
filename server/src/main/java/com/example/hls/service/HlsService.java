@@ -90,8 +90,28 @@ public class HlsService {
         return data;
     }
 
+    public byte[] getAudioSegment(String stream, String segmentName, String quality, String userId) {
+        String baseUrl = String.format("%s/%s", originBaseUrl, stream);
+        ResponseEntity<byte[]> response = downloadAudioChunk(baseUrl, quality, segmentName);
+        Session session = getSession(userId);
+        session.incrementSegments();
+        byte[] data = response.getBody();
+        int length = data == null ? 0 : data.length;
+        sessionService.updateMetrics(userId,
+                StringUtil.isNullOrEmpty(quality) ? "" : quality,
+                segmentName + ".aac",
+                length);
+        return data;
+    }
+
     private ResponseEntity<byte[]> downloadChunk(String originBaseUrl, String quality, String segmentName) {
-        String url = buildSegmentPath(originBaseUrl, quality, segmentName);
+        String url = buildSegmentPath(originBaseUrl, quality, segmentName, "ts");
+        logger.debug("Downloading chunk {}", url);
+        return restTemplate.getForEntity(url, byte[].class);
+    }
+
+    private ResponseEntity<byte[]> downloadAudioChunk(String originBaseUrl, String quality, String segmentName) {
+        String url = buildSegmentPath(originBaseUrl, quality, segmentName, "aac");
         logger.debug("Downloading chunk {}", url);
         return restTemplate.getForEntity(url, byte[].class);
     }
@@ -112,14 +132,30 @@ public class HlsService {
         int length = data == null ? 0 : data.length;
         sessionService.updateMetrics(userId,
                 Optional.ofNullable(quality).orElse(""),
-                buildSegmentPath("ads", segmentName, quality),
+                buildSegmentPath("ads", quality, segmentName),
+                length);
+
+        return data;
+    }
+
+    public byte[] getAudioAdSegment(String segmentName, String quality, String userId) {
+        ResponseEntity<byte[]> response = downloadAudioChunk(adBaseUrl, quality, segmentName);
+        byte[] data = response.getBody();
+        int length = data == null ? 0 : data.length;
+        sessionService.updateMetrics(userId,
+                Optional.ofNullable(quality).orElse(""),
+                buildSegmentPath("ads", quality, segmentName, "aac"),
                 length);
 
         return data;
     }
 
     private String buildSegmentPath(String basePath, String quality, String segmentName) {
-        return String.format("%s/%s.ts", buildQualityPath(basePath, quality), segmentName);
+        return buildSegmentPath(basePath, quality, segmentName, "ts");
+    }
+
+    private String buildSegmentPath(String basePath, String quality, String segmentName, String ext) {
+        return String.format("%s/%s.%s", buildQualityPath(basePath, quality), segmentName, ext);
     }
 
 }
