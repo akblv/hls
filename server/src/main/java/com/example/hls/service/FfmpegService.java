@@ -73,7 +73,7 @@ public class FfmpegService {
         command.add("-f"); command.add("hls");
         command.add("-hls_time"); command.add("4");
         command.add("-hls_flags"); command.add("delete_segments+append_list+independent_segments");
-        command.add("-hls_list_size"); command.add("20");
+        command.add("-hls_list_size"); command.add("8");
         command.add(String.format("%s/%%v/playlist.m3u8", streamPath));
         return command;
     }

@@ -4,18 +4,25 @@ package com.example.hls.model;
  * Stores metrics related to a specific stream quality.
  */
 public class QualityMetrics {
+    private String lastDownloadedSequenceNumber;
     private String lastDownloadedChunk;
     private long downloadedBytes;
 
-    public synchronized String getLastDownloadedChunk() {
+    public String getLastDownloadedChunk() {
         return lastDownloadedChunk;
     }
 
-    public synchronized long getDownloadedBytes() {
+    public long getDownloadedBytes() {
         return downloadedBytes;
     }
 
-    public synchronized void update(String chunk, long bytes) {
+    public String getLastDownloadedSequenceNumber() {
+        return lastDownloadedSequenceNumber;
+    }
+
+    public void update(String chunk, long bytes) {
+        String[] splitLine = chunk.split("_");
+        this.lastDownloadedSequenceNumber = splitLine[splitLine.length - 1];
         this.lastDownloadedChunk = chunk;
         this.downloadedBytes += bytes;
     }
