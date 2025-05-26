@@ -1,5 +1,6 @@
 package com.example.hls;
 
+import com.example.hls.controller.HlsController;
 import com.example.hls.service.HlsService;
 import com.example.hls.service.FfmpegService;
 import com.example.hls.service.session.SessionTokenService;

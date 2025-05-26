@@ -1,4 +1,4 @@
-package com.example.hls;
+package com.example.hls.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
