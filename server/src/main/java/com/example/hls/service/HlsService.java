@@ -1,5 +1,6 @@
 package com.example.hls.service;
 
+import ch.qos.logback.core.util.StringUtil;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,13 +65,11 @@ public class HlsService {
         List<String> lines = new ArrayList<>(Arrays.asList(m3u8.split("\n")));
         if (session.shouldInsertAd()) {
             lines.add("#EXT-X-DISCONTINUITY");
-            for (String ad : session.getNextAdSegments()) {
+            session.getNextAdSegments().forEach(ad -> {
                 lines.add("#EXTINF:" + segmentDurationSeconds + ".0,");
-                String prefix = quality == null || quality.isEmpty()
-                        ? "ads/"
-                        : "../ads/" + quality + "/";
+                String prefix = StringUtil.isNullOrEmpty(quality) ? "ads/" : "ads/" + quality + "/";
                 lines.add(prefix + ad);
-            }
+            });
             lines.add("#EXT-X-DISCONTINUITY");
             session.markAdInserted();
         }
@@ -119,14 +118,14 @@ public class HlsService {
     }
 
     private String buildSegmentPath(String basePath, String quality, String segmentName) {
-        return String.format( "%s/%s.ts", buildQualityPath(basePath, quality), segmentName);
+        return String.format("%s/%s.ts", buildQualityPath(basePath, quality), segmentName);
     }
 
     private static class UserSession {
         private final int frequencySegments;
         private int segmentsServed = 0;
         private boolean adDue = false;
-        private final List<String> adSegments = Arrays.asList("ad0.ts", "ad1.ts", "ad2.ts");
+        private final List<String> adSegments = Arrays.asList("ad-0.ts", "ad-1.ts", "ad-2.ts");
 
         UserSession(int frequencySegments) {
             this.frequencySegments = Math.max(1, frequencySegments);
