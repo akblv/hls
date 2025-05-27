@@ -1,7 +1,6 @@
 package com.example.hls.service;
 
 import ch.qos.logback.core.util.StringUtil;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,18 +30,14 @@ public class HlsService {
     @Value("${hls.segment-duration-seconds:5}")
     private int segmentDurationSeconds;
 
-    private RestTemplate restTemplate;
+    private final RestTemplate restTemplate;
 
     private final SessionService sessionService;
 
     @Autowired
-    public HlsService(SessionService sessionService) {
+    public HlsService(RestTemplate restTemplate, SessionService sessionService) {
+        this.restTemplate = restTemplate;
         this.sessionService = sessionService;
-    }
-
-    @PostConstruct
-    public void init() {
-        restTemplate = new RestTemplate();
     }
 
     private Session getSession(String userId) {
