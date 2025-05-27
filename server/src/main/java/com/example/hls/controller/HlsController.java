@@ -15,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.regex.Pattern;
+
 import java.util.Map;
 
 
@@ -22,6 +24,8 @@ import java.util.Map;
 @RequestMapping("/live/stream")
 public class HlsController {
     private static final Logger logger = LoggerFactory.getLogger(HlsController.class);
+    private static final Pattern STREAM_PATTERN =
+            Pattern.compile("^([0-9a-z]{11}(tv|uv|vv)|[0-9a-z]{7}mb)$");
 
     private final HlsService hlsService;
     private final SessionTokenService tokenService;
@@ -34,11 +38,19 @@ public class HlsController {
         this.ffmpegService = ffmpegService;
     }
 
+    boolean isStreamValid(String stream) {
+        return stream != null && STREAM_PATTERN.matcher(stream).matches();
+    }
+
 
     @PostMapping("/validate")
     public ResponseEntity<Void> validate(@RequestParam Map<String, String> params) {
         NginxRtmpRequest request = new NginxRtmpRequest(params);
         logger.info("Validating key {}", request);
+        if (!isStreamValid(request.name())) {
+            logger.warn("Invalid stream name {}", request.name());
+            return ResponseEntity.badRequest().build();
+        }
         // start transcoding asynchronously after acknowledging the publish
         ffmpegService.startTranscoding(request);
         return ResponseEntity.ok().build();

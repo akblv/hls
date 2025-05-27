@@ -14,6 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(HlsController.class)
@@ -49,5 +50,17 @@ class HlsControllerTests {
         mockMvc.perform(get("/live/stream/foo/720p/playlist.m3u8"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("playlist"));
+    }
+
+    @Test
+    void rejectsInvalidStreamOnValidate() throws Exception {
+        mockMvc.perform(post("/live/stream/validate").param("name", "bad"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void acceptsValidStreamOnValidate() throws Exception {
+        mockMvc.perform(post("/live/stream/validate").param("name", "abcdef12345tv"))
+                .andExpect(status().isOk());
     }
 }
