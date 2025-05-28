@@ -1,4 +1,4 @@
-package com.zenomedia.config;
+package com.example.hls.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -10,7 +10,6 @@ import org.springframework.web.client.RestTemplate;
 import java.time.Duration;
 
 @Configuration
-@EnableScheduling
 public class AdMediaConfiguration {
 
     @Value("${admedia.url:}")
@@ -25,13 +24,6 @@ public class AdMediaConfiguration {
     @Value("${admedia.catalog.cache.expiration:600000}")
     private int adCatalogCacheExpiration;
 
-    @Bean
-    public RestTemplate adMediaRestTemplate(RestTemplateBuilder builder) {
-        return builder
-                .setConnectTimeout(Duration.ofMillis(requestTimeout))
-                .setReadTimeout(Duration.ofMillis(requestTimeout))
-                .build();
-    }
 
     public String getAdMediaServiceUrl() {
         return adMediaServiceUrl;
