@@ -24,6 +24,12 @@ public class AdMediaConfiguration {
     @Value("${admedia.catalog.cache.expiration:600000}")
     private int adCatalogCacheExpiration;
 
+    @Value("${adprovider.url:}")
+    private String adProviderUrl;
+
+    @Value("${adprovider.requests.timeout:5000}")
+    private int adProviderTimeout;
+
 
     public String getAdMediaServiceUrl() {
         return adMediaServiceUrl;
@@ -39,5 +45,13 @@ public class AdMediaConfiguration {
 
     public int getAdCatalogCacheExpiration() {
         return adCatalogCacheExpiration;
+    }
+
+    public String getAdProviderUrl() {
+        return adProviderUrl;
+    }
+
+    public int getAdProviderTimeout() {
+        return adProviderTimeout;
     }
 }
