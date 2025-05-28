@@ -5,6 +5,7 @@ import com.example.hls.model.CacheEntry;
 import com.example.hls.model.CodecInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.hls.model.ad.*;
 import com.zenomedia.common.model.ads.AdCatalogItem;
 import com.zenomedia.common.model.transcode.CodecSettingInfo;
 import org.apache.logging.log4j.LogManager;
@@ -164,6 +165,50 @@ public class AdMediaService {
         codecInfo.duration().map(builder::duration);
 
         return builder.build();
+    }
+
+    public AdResponse getAd(String breakId, long duration, boolean preroll, SessionContext session) {
+        ZoneId zoneId = preroll ? ZoneId.PREROLL : ZoneId.MIDROLL;
+        String url = UriComponentsBuilder.fromUriString(config.getAdProviderUrl())
+                .queryParam("breakId", breakId)
+                .queryParam("zoneId", zoneId)
+                .queryParam("duration", duration)
+                .toUriString();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add("X-Device-Ip", session.getClientIp());
+
+        HttpEntity<SessionContext> entity = new HttpEntity<>(session, headers);
+
+        try {
+            ResponseEntity<AdResponse> response = restTemplate.exchange(url, HttpMethod.POST, entity, AdResponse.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return response.getBody();
+            }
+            logger.error("Failed to get ad from {} http status {}", url, response.getStatusCode());
+        } catch (Exception e) {
+            logger.error("Failed to get ad from {}", url, e);
+        }
+        return new AdResponse();
+    }
+
+    public void skipNext(SessionContext session) {
+        String url = config.getAdProviderUrl() + "/skip-next";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.add("X-Device-Ip", session.getClientIp());
+        HttpEntity<SessionContext> entity = new HttpEntity<>(session, headers);
+        try {
+            ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, entity, Void.class);
+            if (response.getStatusCode().is2xxSuccessful()) {
+                logger.debug("Skip next ad by calling: {}", url);
+            } else {
+                logger.warn("Failed skip next ad by calling: {} {}", url, response.getStatusCode());
+            }
+        } catch (Exception e) {
+            logger.warn("Failed skip next ad by calling: {}", url, e);
+        }
     }
 
 
