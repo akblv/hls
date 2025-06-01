@@ -4,7 +4,6 @@ import com.example.hls.config.AdMediaConfiguration;
 import com.example.hls.model.CacheEntry;
 import com.example.hls.model.CodecInfo;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.hls.model.ad.*;
 import com.zenomedia.common.model.ads.AdCatalogItem;
 import com.zenomedia.common.model.transcode.CodecSettingInfo;
@@ -14,8 +13,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
+
+import com.example.hls.util.JsonConverter;
 
 import java.util.Collections;
 import java.util.List;
@@ -23,23 +24,23 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Synchronous version of the Scala AdMediaService using RestTemplate.
+ * Synchronous version of the Scala AdMediaService using WebClient.
  */
 @Service
 public class AdMediaService {
 
     private static final Logger logger = LogManager.getLogger(AdMediaService.class);
 
-    private final RestTemplate restTemplate;
+    private final WebClient webClient;
     private final AdMediaConfiguration config;
-    private final ObjectMapper converter;
+    private final JsonConverter converter;
 
     private final Map<Integer, CacheEntry<CodecSettingInfo>> codecSettingInfoCache = new ConcurrentHashMap<>();
     private final Map<String, CacheEntry<AdCatalogItem>> adCatalogCacheByUrl = new ConcurrentHashMap<>();
 
     @Autowired
-    public AdMediaService(RestTemplate restTemplate, AdMediaConfiguration config, ObjectMapper converter) {
-        this.restTemplate = restTemplate;
+    public AdMediaService(WebClient webClient, AdMediaConfiguration config, JsonConverter converter) {
+        this.webClient = webClient;
         this.config = config;
         this.converter = converter;
     }
@@ -68,9 +69,13 @@ public class AdMediaService {
                 .queryParam("from", from)
                 .toUriString();
         try {
-            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return converter.readValue(response.getBody(), new TypeReference<List<AdCatalogItem>>() {
+            ResponseEntity<String> response = webClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .toEntity(String.class)
+                    .block();
+            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return converter.deserializeJson(response.getBody(), new TypeReference<List<AdCatalogItem>>() {
                 });
             }
         } catch (Exception e) {
@@ -90,11 +95,15 @@ public class AdMediaService {
                 .queryParam("url", url)
                 .toUriString();
         try {
-            ResponseEntity<String> response = restTemplate.getForEntity(requestUrl, String.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return cacheAdCatalogItem(converter.readValue(response.getBody(), AdCatalogItem.class));
+            ResponseEntity<String> response = webClient.get()
+                    .uri(requestUrl)
+                    .retrieve()
+                    .toEntity(String.class)
+                    .block();
+            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return cacheAdCatalogItem(converter.deserializeJson(response.getBody(), AdCatalogItem.class));
             }
-            throw new RuntimeException("Failed url: " + requestUrl + " with http status: " + response.getStatusCode());
+            throw new RuntimeException("Failed url: " + requestUrl + " with http status: " + (response != null ? response.getStatusCode() : "no response"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -119,11 +128,16 @@ public class AdMediaService {
         HttpHeaders headers = new HttpHeaders();
         headers.add("x-item-id", mediaId);
         try {
-            ResponseEntity<byte[]> response = restTemplate.exchange(requestUrl, HttpMethod.GET, new HttpEntity<>(headers), byte[].class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            ResponseEntity<byte[]> response = webClient.get()
+                    .uri(requestUrl)
+                    .headers(h -> h.addAll(headers))
+                    .retrieve()
+                    .toEntity(byte[].class)
+                    .block();
+            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 return response.getBody();
             }
-            throw new RuntimeException("Failed url: " + requestUrl + " with http status: " + response.getStatusCode());
+            throw new RuntimeException("Failed url: " + requestUrl + " with http status: " + (response != null ? response.getStatusCode() : "no response"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -141,14 +155,20 @@ public class AdMediaService {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<byte[]> entity = new HttpEntity<>(converter.writeValueAsBytes(codec), headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                CodecSettingInfo result = converter.readValue(response.getBody(), CodecSettingInfo.class);
+            String body = converter.serializeJson(codec);
+            ResponseEntity<String> response = webClient.post()
+                    .uri(url)
+                    .headers(h -> h.addAll(headers))
+                    .bodyValue(body)
+                    .retrieve()
+                    .toEntity(String.class)
+                    .block();
+            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                CodecSettingInfo result = converter.deserializeJson(response.getBody(), CodecSettingInfo.class);
                 codecSettingInfoCache.put(cacheKey, new CacheEntry<>(result, System.currentTimeMillis()));
                 return result;
             }
-            throw new RuntimeException("Failed url: " + url + " http status: " + response.getStatusCode());
+            throw new RuntimeException("Failed url: " + url + " http status: " + (response != null ? response.getStatusCode() : "no response"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -182,11 +202,17 @@ public class AdMediaService {
         HttpEntity<SessionContext> entity = new HttpEntity<>(session, headers);
 
         try {
-            ResponseEntity<AdResponse> response = restTemplate.exchange(url, HttpMethod.POST, entity, AdResponse.class);
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            ResponseEntity<AdResponse> response = webClient.post()
+                    .uri(url)
+                    .headers(h -> h.addAll(entity.getHeaders()))
+                    .bodyValue(session)
+                    .retrieve()
+                    .toEntity(AdResponse.class)
+                    .block();
+            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 return response.getBody();
             }
-            logger.error("Failed to get ad from {} http status {}", url, response.getStatusCode());
+            logger.error("Failed to get ad from {} http status {}", url, response != null ? response.getStatusCode() : "no response");
         } catch (Exception e) {
             logger.error("Failed to get ad from {}", url, e);
         }
@@ -200,11 +226,19 @@ public class AdMediaService {
         headers.add("X-Device-Ip", session.getClientIp());
         HttpEntity<SessionContext> entity = new HttpEntity<>(session, headers);
         try {
-            ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, entity, Void.class);
-            if (response.getStatusCode().is2xxSuccessful()) {
+            ResponseEntity<Void> response = webClient.post()
+                    .uri(url)
+                    .headers(h -> h.addAll(entity.getHeaders()))
+                    .bodyValue(session)
+                    .retrieve()
+                    .toEntity(Void.class)
+                    .block();
+            if (response != null && response.getStatusCode().is2xxSuccessful()) {
                 logger.debug("Skip next ad by calling: {}", url);
-            } else {
+            } else if (response != null) {
                 logger.warn("Failed skip next ad by calling: {} {}", url, response.getStatusCode());
+            } else {
+                logger.warn("Failed skip next ad by calling: {}", url);
             }
         } catch (Exception e) {
             logger.warn("Failed skip next ad by calling: {}", url, e);
