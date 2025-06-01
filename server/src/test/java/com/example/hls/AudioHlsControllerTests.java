@@ -7,20 +7,19 @@ import com.example.hls.service.session.SessionTokenService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import reactor.core.publisher.Mono;
 
-@WebMvcTest(AudioHlsController.class)
+@WebFluxTest(AudioHlsController.class)
 class AudioHlsControllerTests {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebTestClient webClient;
 
     @MockBean
     private HlsService hlsService;
@@ -34,20 +33,22 @@ class AudioHlsControllerTests {
     @BeforeEach
     void setup() {
         when(hlsService.getPlaylist(anyString(), anyString(), anyString(), anyString()))
-                .thenReturn("playlist");
+                .thenReturn(Mono.just("playlist"));
     }
 
     @Test
-    void returnsPlaylist() throws Exception {
-        mockMvc.perform(get("/live/audio/foo/playlist.m3u8"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("playlist"));
+    void returnsPlaylist() {
+        webClient.get().uri("/live/audio/foo/playlist.m3u8")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class).isEqualTo("playlist");
     }
 
     @Test
-    void returnsPlaylistWithQuality() throws Exception {
-        mockMvc.perform(get("/live/audio/foo/high/playlist.m3u8"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("playlist"));
+    void returnsPlaylistWithQuality() {
+        webClient.get().uri("/live/audio/foo/high/playlist.m3u8")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class).isEqualTo("playlist");
     }
 }
