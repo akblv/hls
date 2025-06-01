@@ -14,6 +14,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Mono;
 
 import java.util.regex.Pattern;
 
@@ -67,7 +68,7 @@ public class HlsController {
      * Return the playlist with a simple advertisement insertion after every third segment.
      */
     @GetMapping(path = "/{stream}/{playlist}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<?> getPlaylist(@PathVariable String stream, @PathVariable String playlist, HttpServletRequest request) {
+    public Mono<ResponseEntity<?>> getPlaylist(@PathVariable String stream, @PathVariable String playlist, HttpServletRequest request) {
 //        String token = request.getParameter("zt");
 //        if (!tokenService.isValid(token, name)) {
 //            String newToken = tokenService.generateToken(name);
@@ -76,16 +77,15 @@ public class HlsController {
 //        }
 
         String user = request.getRemoteAddr();
-        String body = hlsService.getPlaylist(stream, playlist, "", user);
-        logger.debug("Playlist {}", body);
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noCache())
-                .contentType(MediaType.valueOf("application/vnd.apple.mpegurl"))
-                .body(body);
+        return hlsService.getPlaylist(stream, playlist, "", user)
+                .map(body -> ResponseEntity.ok()
+                        .cacheControl(CacheControl.noCache())
+                        .contentType(MediaType.valueOf("application/vnd.apple.mpegurl"))
+                        .body(body));
     }
 
     @GetMapping(path = "{stream}/{quality}/{playlist}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<?> getPlaylistWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String playlist, HttpServletRequest request) {
+    public Mono<ResponseEntity<?>> getPlaylistWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String playlist, HttpServletRequest request) {
 //        String token = request.getParameter("zt");
 //        if (!tokenService.isValid(token, name)) {
 //            String newToken = tokenService.generateToken(name);
@@ -94,51 +94,58 @@ public class HlsController {
 //        }
 
         String user = request.getRemoteAddr();
-        String body = hlsService.getPlaylist(stream, playlist, quality, user);
-        logger.debug("Playlist {}", body);
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noCache())
-                .contentType(MediaType.valueOf("application/vnd.apple.mpegurl"))
-                .body(body);
+        return hlsService.getPlaylist(stream, playlist, quality, user)
+                .map(body -> ResponseEntity.ok()
+                        .cacheControl(CacheControl.noCache())
+                        .contentType(MediaType.valueOf("application/vnd.apple.mpegurl"))
+                        .body(body));
     }
 
     @GetMapping(value = "{stream}/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getSegment(@PathVariable String stream, @PathVariable String segment, HttpServletRequest request) {
+    public Mono<ResponseEntity<Resource>> getSegment(@PathVariable String stream, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
-        byte[] data = hlsService.getSegment(stream, segment, "", user);
-        logger.debug("Serving segment {}", segment);
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noCache())
-                .body(new ByteArrayResource(data));
+        return hlsService.getSegment(stream, segment, "", user)
+                .map(data -> {
+                    logger.debug("Serving segment {}", segment);
+                    return ResponseEntity.ok()
+                            .cacheControl(CacheControl.noCache())
+                            .body(new ByteArrayResource(data));
+                });
     }
 
     @GetMapping(value = "{stream}/{quality}/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getSegmentWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String segment, HttpServletRequest request) {
+    public Mono<ResponseEntity<Resource>> getSegmentWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
-        byte[] data = hlsService.getSegment(stream, segment, quality, user);
-        logger.debug("Serving segment {} for quality {}", segment, quality);
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noCache())
-                .body(new ByteArrayResource(data));
+        return hlsService.getSegment(stream, segment, quality, user)
+                .map(data -> {
+                    logger.debug("Serving segment {} for quality {}", segment, quality);
+                    return ResponseEntity.ok()
+                            .cacheControl(CacheControl.noCache())
+                            .body(new ByteArrayResource(data));
+                });
     }
 
     @GetMapping(value = "{stream}/{quality}/ads/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getAdSegment(@PathVariable String stream, @PathVariable String segment, HttpServletRequest request) {
+    public Mono<ResponseEntity<Resource>> getAdSegment(@PathVariable String stream, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
-        byte[] data = hlsService.getAdSegment(segment, "", user);
-        logger.debug("Serving ad segment {}", segment);
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noCache())
-                .body(new ByteArrayResource(data));
+        return hlsService.getAdSegment(segment, "", user)
+                .map(data -> {
+                    logger.debug("Serving ad segment {}", segment);
+                    return ResponseEntity.ok()
+                            .cacheControl(CacheControl.noCache())
+                            .body(new ByteArrayResource(data));
+                });
     }
 
     @GetMapping(value = "{stream}/{quality}/ads/{ad_quality}/{segment}.ts", produces = "video/MP2T")
-    public ResponseEntity<Resource> getAdSegmentWithQuality(@PathVariable String stream, @PathVariable String ad_quality, @PathVariable String segment, HttpServletRequest request) {
+    public Mono<ResponseEntity<Resource>> getAdSegmentWithQuality(@PathVariable String stream, @PathVariable String ad_quality, @PathVariable String segment, HttpServletRequest request) {
         String user = request.getRemoteAddr();
-        byte[] data = hlsService.getAdSegment(segment, ad_quality, user);
-        logger.debug("Serving ad segment {} for quality {}", segment, ad_quality);
-        return ResponseEntity.ok()
-                .cacheControl(CacheControl.noCache())
-                .body(new ByteArrayResource(data));
+        return hlsService.getAdSegment(segment, ad_quality, user)
+                .map(data -> {
+                    logger.debug("Serving ad segment {} for quality {}", segment, ad_quality);
+                    return ResponseEntity.ok()
+                            .cacheControl(CacheControl.noCache())
+                            .body(new ByteArrayResource(data));
+                });
     }
 }
