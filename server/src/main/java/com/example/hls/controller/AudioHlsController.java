@@ -1,6 +1,5 @@
 package com.example.hls.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.example.hls.model.NginxRtmpRequest;
@@ -13,6 +12,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -49,8 +49,8 @@ public class AudioHlsController {
     }
 
     @GetMapping(path = "/{stream}/{playlist}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public Mono<ResponseEntity<?>> getPlaylist(@PathVariable String stream, @PathVariable String playlist, HttpServletRequest request) {
-        String user = request.getRemoteAddr();
+    public Mono<ResponseEntity<?>> getPlaylist(@PathVariable String stream, @PathVariable String playlist, ServerHttpRequest request) {
+        String user = request.getRemoteAddress().toString();
         return hlsService.getPlaylist(stream, playlist, "", user)
                 .map(body -> {
                     logger.debug("Audio playlist {}", body);
@@ -62,8 +62,8 @@ public class AudioHlsController {
     }
 
     @GetMapping(path = "{stream}/{quality}/{playlist}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public Mono<ResponseEntity<?>> getPlaylistWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String playlist, HttpServletRequest request) {
-        String user = request.getRemoteAddr();
+    public Mono<ResponseEntity<?>> getPlaylistWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String playlist, ServerHttpRequest request) {
+        String user = request.getRemoteAddress().toString();
         return hlsService.getPlaylist(stream, playlist, quality, user)
                 .map(body -> {
                     logger.debug("Audio playlist {}", body);
@@ -75,8 +75,8 @@ public class AudioHlsController {
     }
 
     @GetMapping(value = "{stream}/{segment}.aac", produces = "audio/aac")
-    public Mono<ResponseEntity<Resource>> getSegment(@PathVariable String stream, @PathVariable String segment, HttpServletRequest request) {
-        String user = request.getRemoteAddr();
+    public Mono<ResponseEntity<Resource>> getSegment(@PathVariable String stream, @PathVariable String segment, ServerHttpRequest request) {
+        String user = request.getRemoteAddress().toString();
         return hlsService.getAudioSegment(stream, segment, "", user)
                 .map(data -> {
                     logger.debug("Serving audio segment {}", segment);
@@ -87,8 +87,8 @@ public class AudioHlsController {
     }
 
     @GetMapping(value = "{stream}/{quality}/{segment}.aac", produces = "audio/aac")
-    public Mono<ResponseEntity<Resource>> getSegmentWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String segment, HttpServletRequest request) {
-        String user = request.getRemoteAddr();
+    public Mono<ResponseEntity<Resource>> getSegmentWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String segment, ServerHttpRequest request) {
+        String user = request.getRemoteAddress().toString();
         return hlsService.getAudioSegment(stream, segment, quality, user)
                 .map(data -> {
                     logger.debug("Serving audio segment {} for quality {}", segment, quality);
@@ -99,8 +99,8 @@ public class AudioHlsController {
     }
 
     @GetMapping(value = "{stream}/{quality}/ads/{segment}.aac", produces = "audio/aac")
-    public Mono<ResponseEntity<Resource>> getAdSegment(@PathVariable String stream, @PathVariable String segment, HttpServletRequest request) {
-        String user = request.getRemoteAddr();
+    public Mono<ResponseEntity<Resource>> getAdSegment(@PathVariable String stream, @PathVariable String segment, ServerHttpRequest request) {
+        String user = request.getRemoteAddress().toString();
         return hlsService.getAudioAdSegment(segment, "", user)
                 .map(data -> {
                     logger.debug("Serving audio ad segment {}", segment);
@@ -111,8 +111,8 @@ public class AudioHlsController {
     }
 
     @GetMapping(value = "{stream}/{quality}/ads/{ad_quality}/{segment}.aac", produces = "audio/aac")
-    public Mono<ResponseEntity<Resource>> getAdSegmentWithQuality(@PathVariable String stream, @PathVariable String ad_quality, @PathVariable String segment, HttpServletRequest request) {
-        String user = request.getRemoteAddr();
+    public Mono<ResponseEntity<Resource>> getAdSegmentWithQuality(@PathVariable String stream, @PathVariable String ad_quality, @PathVariable String segment, ServerHttpRequest request) {
+        String user = request.getRemoteAddress().toString();
         return hlsService.getAudioAdSegment(segment, ad_quality, user)
                 .map(data -> {
                     logger.debug("Serving audio ad segment {} for quality {}", segment, ad_quality);

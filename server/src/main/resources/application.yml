@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+hls:
+  origin-base-url: http://127.0.0.1/hls
+  ad-base-url: http://127.0.0.1/ads
+  ad-frequency-minutes: 2
+  segment-duration-seconds: 5
+  output-path: /Users/amalkabulov/IdeaProjects/zeno/nginx-hls-voulume/hls
+
+service:
+  url:
+    load-balancer: ${LOAD_BALANCER_SERVICE_URL:https://stream-dev.zeno.fm}
+    #    load-balancer: "http://localhost:8080"
+    stream-base: ${STREAM_BASE_URL:https://upstream-dev.zenomedia.com}
+    elasticsearch:
+      ads:
+        url: ${ES_ADS_URL:https://ads-es.zenomedia.com:443}
+        index: ${ES_ADS_INDEX:dev-ad-events*}
+      sessions:
+        url: ${ES_SESSIONS_URL:https://streaming-es.zenomedia.com:433}
+        index: ${ES_SESSIONS_INDEX:dev-zeno-streaming-sessions-*}
+    media-service: ${MEDIA_SERVICE_URL:https://stream-admedia-dev.zenomedia.com}
+    session-context: ${SESSION_CONTEXT_SERVICE_URL:https://stream-lc-dev.zenomedia.com/contexts}
+    traffic-manager: ${TRAFFIC_MANAGER_SERVICE_URL:https://stream-tm-dev.zenomedia.com/actions}
+
+
+keystore:
+  jks: ${KEYSTORE_JKS:/home/jenkins/pki/jenkins.jks}
+  cert: ${KEYSTORE_CERT:/home/jenkins/pki/jenkins-key.pem}
+  key: ${KEYSTORE_KEY:/home/jenkins/pki/jenkins.pem}
+  password: ${KEYSTORE_PASSWORD:Z55ByGcXytG3J13xZ7F}
+
+ffmpeg:
+  path: ${FFMPEG_PATH:/usr/bin/ffmpeg}
