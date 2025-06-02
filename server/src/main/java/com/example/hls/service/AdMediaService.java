@@ -17,6 +17,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.example.hls.util.JsonConverter;
+import reactor.core.publisher.Mono;
 
 import java.util.Collections;
 import java.util.List;
@@ -24,7 +25,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Synchronous version of the Scala AdMediaService using WebClient.
+ * Reactive version of the Scala AdMediaService using WebClient.
  */
 @Service
 public class AdMediaService {
@@ -60,7 +61,7 @@ public class AdMediaService {
         // Placeholder for warmup logic if needed
     }
 
-    public List<AdCatalogItem> retrieveAdMediaPaginated(String mount, String from, String size, String page) {
+    public Mono<List<AdCatalogItem>> retrieveAdMediaPaginated(String mount, String from, String size, String page) {
         String url = UriComponentsBuilder.fromUriString(config.getAdMediaServiceUrl())
                 .path("/media/items")
                 .queryParam("stream", mount)
@@ -68,45 +69,31 @@ public class AdMediaService {
                 .queryParam("size", size)
                 .queryParam("from", from)
                 .toUriString();
-        try {
-            ResponseEntity<String> response = webClient.get()
-                    .uri(url)
-                    .retrieve()
-                    .toEntity(String.class)
-                    .block();
-            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return converter.deserializeJson(response.getBody(), new TypeReference<List<AdCatalogItem>>() {
-                });
-            }
-        } catch (Exception e) {
-            logger.warn("Failed retrieving ad media page {}", page, e);
-        }
-        return Collections.emptyList();
+        return webClient.get()
+                .uri(url)
+                .retrieve()
+                .bodyToMono(String.class)
+                .map(body -> converter.deserializeJson(body, new TypeReference<List<AdCatalogItem>>() {}))
+                .doOnError(e -> logger.warn("Failed retrieving ad media page {}", page, e))
+                .onErrorReturn(Collections.emptyList());
     }
 
-    public AdCatalogItem retrieveAdMediaForUrl(String url) {
+    public Mono<AdCatalogItem> retrieveAdMediaForUrl(String url) {
         CacheEntry<AdCatalogItem> cached = adCatalogCacheByUrl.get(url);
-        return cached != null ? cached.value() : retrieveAdMediaForUrlImpl(url);
+        return cached != null ? Mono.just(cached.value()) : retrieveAdMediaForUrlImpl(url);
     }
 
-    public AdCatalogItem retrieveAdMediaForUrlImpl(String url) {
+    public Mono<AdCatalogItem> retrieveAdMediaForUrlImpl(String url) {
         String requestUrl = UriComponentsBuilder.fromUriString(config.getAdMediaServiceUrl())
                 .path("/media/items/find")
                 .queryParam("url", url)
                 .toUriString();
-        try {
-            ResponseEntity<String> response = webClient.get()
-                    .uri(requestUrl)
-                    .retrieve()
-                    .toEntity(String.class)
-                    .block();
-            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return cacheAdCatalogItem(converter.deserializeJson(response.getBody(), AdCatalogItem.class));
-            }
-            throw new RuntimeException("Failed url: " + requestUrl + " with http status: " + (response != null ? response.getStatusCode() : "no response"));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return webClient.get()
+                .uri(requestUrl)
+                .retrieve()
+                .bodyToMono(String.class)
+                .map(body -> cacheAdCatalogItem(converter.deserializeJson(body, AdCatalogItem.class)))
+                .onErrorMap(e -> new RuntimeException(e));
     }
 
     public AdCatalogItem cacheAdCatalogItem(AdCatalogItem adCatalogItem) {
@@ -118,7 +105,7 @@ public class AdMediaService {
         return adCatalogItem;
     }
 
-    public byte[] retrieveTranscodedFileForAdMedia(String mediaId, String codecId, Integer loudnessTarget) {
+    public Mono<byte[]> retrieveTranscodedFileForAdMedia(String mediaId, String codecId, Integer loudnessTarget) {
         String lt = loudnessTarget != null ? loudnessTarget.toString() : "";
         String requestUrl = UriComponentsBuilder.fromUriString(config.getAdMediaServiceUrl())
                 .path("/media/items/" + mediaId + "/files/transcoded")
@@ -127,51 +114,38 @@ public class AdMediaService {
                 .toUriString();
         HttpHeaders headers = new HttpHeaders();
         headers.add("x-item-id", mediaId);
-        try {
-            ResponseEntity<byte[]> response = webClient.get()
-                    .uri(requestUrl)
-                    .headers(h -> h.addAll(headers))
-                    .retrieve()
-                    .toEntity(byte[].class)
-                    .block();
-            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody();
-            }
-            throw new RuntimeException("Failed url: " + requestUrl + " with http status: " + (response != null ? response.getStatusCode() : "no response"));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        return webClient.get()
+                .uri(requestUrl)
+                .headers(h -> h.addAll(headers))
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .onErrorMap(e -> new RuntimeException(e));
     }
 
-    public CodecSettingInfo retrieveCodecSettingInfoForCodec(CodecInfo codecInfo) {
+    public Mono<CodecSettingInfo> retrieveCodecSettingInfoForCodec(CodecInfo codecInfo) {
         int cacheKey = codecInfo.hashCode();
         CacheEntry<CodecSettingInfo> cached = codecSettingInfoCache.get(cacheKey);
-        return cached != null ? cached.value() : retrieveCodecSettingInfoForCodecImpl(cacheKey, codecInfo);
+        return cached != null ? Mono.just(cached.value()) : retrieveCodecSettingInfoForCodecImpl(cacheKey, codecInfo);
     }
 
-    private CodecSettingInfo retrieveCodecSettingInfoForCodecImpl(int cacheKey, CodecInfo codecInfo) {
+    private Mono<CodecSettingInfo> retrieveCodecSettingInfoForCodecImpl(int cacheKey, CodecInfo codecInfo) {
         CodecSettingInfo codec = getCodecFrom(codecInfo);
         String url = config.getAdMediaServiceUrl() + "/codecsettings/codecsetting";
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_JSON);
-            String body = converter.serializeJson(codec);
-            ResponseEntity<String> response = webClient.post()
-                    .uri(url)
-                    .headers(h -> h.addAll(headers))
-                    .bodyValue(body)
-                    .retrieve()
-                    .toEntity(String.class)
-                    .block();
-            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                CodecSettingInfo result = converter.deserializeJson(response.getBody(), CodecSettingInfo.class);
-                codecSettingInfoCache.put(cacheKey, new CacheEntry<>(result, System.currentTimeMillis()));
-                return result;
-            }
-            throw new RuntimeException("Failed url: " + url + " http status: " + (response != null ? response.getStatusCode() : "no response"));
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        String body = converter.serializeJson(codec);
+        return webClient.post()
+                .uri(url)
+                .headers(h -> h.addAll(headers))
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(String.class)
+                .map(resp -> {
+                    CodecSettingInfo result = converter.deserializeJson(resp, CodecSettingInfo.class);
+                    codecSettingInfoCache.put(cacheKey, new CacheEntry<>(result, System.currentTimeMillis()));
+                    return result;
+                })
+                .onErrorMap(e -> new RuntimeException(e));
     }
 
     private CodecSettingInfo getCodecFrom(CodecInfo codecInfo) {
@@ -187,7 +161,7 @@ public class AdMediaService {
         return builder.build();
     }
 
-    public AdResponse getAd(String breakId, long duration, boolean preroll, SessionContext session) {
+    public Mono<AdResponse> getAd(String breakId, long duration, boolean preroll, SessionContext session) {
         ZoneId zoneId = preroll ? ZoneId.PREROLL : ZoneId.MIDROLL;
         String url = UriComponentsBuilder.fromUriString(config.getAdProviderUrl())
                 .queryParam("breakId", breakId)
@@ -200,49 +174,31 @@ public class AdMediaService {
         headers.add("X-Device-Ip", session.getClientIp());
 
         HttpEntity<SessionContext> entity = new HttpEntity<>(session, headers);
-
-        try {
-            ResponseEntity<AdResponse> response = webClient.post()
-                    .uri(url)
-                    .headers(h -> h.addAll(entity.getHeaders()))
-                    .bodyValue(session)
-                    .retrieve()
-                    .toEntity(AdResponse.class)
-                    .block();
-            if (response != null && response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                return response.getBody();
-            }
-            logger.error("Failed to get ad from {} http status {}", url, response != null ? response.getStatusCode() : "no response");
-        } catch (Exception e) {
-            logger.error("Failed to get ad from {}", url, e);
-        }
-        return new AdResponse();
+        return webClient.post()
+                .uri(url)
+                .headers(h -> h.addAll(entity.getHeaders()))
+                .bodyValue(session)
+                .retrieve()
+                .bodyToMono(AdResponse.class)
+                .doOnError(e -> logger.error("Failed to get ad from {}", url, e))
+                .onErrorReturn(new AdResponse());
     }
 
-    public void skipNext(SessionContext session) {
+    public Mono<Void> skipNext(SessionContext session) {
         String url = config.getAdProviderUrl() + "/skip-next";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.add("X-Device-Ip", session.getClientIp());
         HttpEntity<SessionContext> entity = new HttpEntity<>(session, headers);
-        try {
-            ResponseEntity<Void> response = webClient.post()
-                    .uri(url)
-                    .headers(h -> h.addAll(entity.getHeaders()))
-                    .bodyValue(session)
-                    .retrieve()
-                    .toEntity(Void.class)
-                    .block();
-            if (response != null && response.getStatusCode().is2xxSuccessful()) {
-                logger.debug("Skip next ad by calling: {}", url);
-            } else if (response != null) {
-                logger.warn("Failed skip next ad by calling: {} {}", url, response.getStatusCode());
-            } else {
-                logger.warn("Failed skip next ad by calling: {}", url);
-            }
-        } catch (Exception e) {
-            logger.warn("Failed skip next ad by calling: {}", url, e);
-        }
+        return webClient.post()
+                .uri(url)
+                .headers(h -> h.addAll(entity.getHeaders()))
+                .bodyValue(session)
+                .retrieve()
+                .toBodilessEntity()
+                .doOnSuccess(r -> logger.debug("Skip next ad by calling: {}", url))
+                .doOnError(e -> logger.warn("Failed skip next ad by calling: {}", url, e))
+                .then();
     }
 
 

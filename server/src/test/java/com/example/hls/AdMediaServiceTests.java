@@ -40,7 +40,7 @@ class AdMediaServiceTests {
         WebClient client = WebClient.builder().baseUrl("http://localhost:" + server.port()).build();
         AdMediaService service = new AdMediaService(client, config, new JsonConverter(new ObjectMapper()));
 
-        AdResponse response = service.getAd("b1", 30L, true, new SessionContext("s1", "1.1.1.1"));
+        AdResponse response = service.getAd("b1", 30L, true, new SessionContext("s1", "1.1.1.1")).block();
 
         assertEquals("123", response.getId());
         server.disposeNow();
@@ -60,7 +60,7 @@ class AdMediaServiceTests {
         WebClient client = WebClient.builder().baseUrl("http://localhost:" + server.port()).build();
         AdMediaService service = new AdMediaService(client, config, new JsonConverter(new ObjectMapper()));
 
-        AdResponse response = service.getAd("b1", 30L, true, new SessionContext("s1", "1.1.1.1"));
+        AdResponse response = service.getAd("b1", 30L, true, new SessionContext("s1", "1.1.1.1")).block();
 
         assertNull(response.getId());
         assertTrue(response.getAdDetailsList().isEmpty());
@@ -81,7 +81,7 @@ class AdMediaServiceTests {
         WebClient client = WebClient.builder().baseUrl("http://localhost:" + server.port()).build();
         AdMediaService service = new AdMediaService(client, config, new JsonConverter(new ObjectMapper()));
 
-        service.skipNext(new SessionContext("s1", "1.1.1.1"));
+        service.skipNext(new SessionContext("s1", "1.1.1.1")).block();
         server.disposeNow();
     }
 }
