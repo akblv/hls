@@ -1,5 +1,7 @@
 package com.example.hls.model;
 
+import org.springframework.util.MultiValueMap;
+
 import java.util.Map;
 
 /**
@@ -17,17 +19,17 @@ public record NginxRtmpRequest(
         String name,
         String type) {
 
-    public NginxRtmpRequest(Map<String, String> params) {
+    public NginxRtmpRequest(MultiValueMap<String, String> params) {
         this(
-                params.getOrDefault("app", ""),
-                params.getOrDefault("flashver", ""),
-                params.getOrDefault("swfurl", ""),
-                params.getOrDefault("tcurl", ""),
-                params.getOrDefault("pageurl", ""),
-                params.getOrDefault("addr", ""),
-                params.getOrDefault("clientid", ""),
-                params.getOrDefault("call", ""),
-                params.getOrDefault("name", ""),
-                params.getOrDefault("type", ""));
+                params.getFirst("app"),
+                params.getFirst("flashver"),
+                params.getFirst("swfurl"),
+                params.getFirst("tcurl"),
+                params.getFirst("pageurl"),
+                params.getFirst("addr"),
+                params.getFirst("clientid"),
+                params.getFirst("call"),
+                params.getFirst("name"),
+                params.getFirst("type"));
     }
 }

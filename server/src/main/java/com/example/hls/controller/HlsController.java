@@ -13,10 +13,14 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 
@@ -44,16 +48,22 @@ public class HlsController {
 
 
     @PostMapping("/validate")
-    public ResponseEntity<Void> validate(@RequestParam Map<String, String> params) {
-        NginxRtmpRequest request = new NginxRtmpRequest(params);
-        logger.info("Validating key {}", request);
-        if (!isStreamValid(request.name())) {
-            logger.warn("Invalid stream name {}", request.name());
-            return ResponseEntity.badRequest().build();
-        }
-        // start transcoding asynchronously after acknowledging the publish
-        ffmpegService.startTranscoding(request);
-        return ResponseEntity.ok().build();
+    public Mono<ResponseEntity<Object>> validate(ServerWebExchange request) {
+        return request.getFormData().map(data -> {
+
+
+                    NginxRtmpRequest nginxRtmpRequest = new NginxRtmpRequest(data);
+                    logger.info("Validating key {}", data);
+                    if (!isStreamValid(nginxRtmpRequest.name())) {
+                        logger.warn("Invalid stream name {}", nginxRtmpRequest.name());
+                        return ResponseEntity.badRequest().build();
+                    }
+                    // start transcoding asynchronously after acknowledging the publish
+                    ffmpegService.startTranscoding(nginxRtmpRequest);
+                    return ResponseEntity.ok().build();
+                })
+                .doOnError(err -> ResponseEntity.badRequest().build());
+
     }
 
     @PostMapping("/done")

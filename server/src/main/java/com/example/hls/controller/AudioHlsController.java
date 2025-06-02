@@ -34,13 +34,13 @@ public class AudioHlsController {
         this.ffmpegService = ffmpegService;
     }
 
-    @PostMapping("/validate")
-    public ResponseEntity<Void> validate(@RequestParam Map<String, String> params) {
-        NginxRtmpRequest request = new NginxRtmpRequest(params);
-        logger.info("Validating audio stream {}", request);
-        ffmpegService.startAudioTranscoding(request);
-        return ResponseEntity.ok().build();
-    }
+//    @PostMapping("/validate")
+//    public ResponseEntity<Void> validate(@RequestParam Map<String, String> params) {
+//        NginxRtmpRequest request = new NginxRtmpRequest(params);
+//        logger.info("Validating audio stream {}", request);
+//        ffmpegService.startAudioTranscoding(request);
+//        return ResponseEntity.ok().build();
+//    }
 
     @PostMapping("/done")
     public ResponseEntity<Void> done(@RequestParam Map<String, String> params) {
