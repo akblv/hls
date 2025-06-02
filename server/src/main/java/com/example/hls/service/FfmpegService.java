@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Service responsible for spawning ffmpeg to transcode RTMP streams into HLS.
@@ -187,18 +187,17 @@ public class FfmpegService {
     }
 
     private void runAsync(List<String> command) {
-        CompletableFuture.runAsync(() -> {
+        Mono.fromCallable(() -> {
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
-            try {
-                logger.info("Starting ffmpeg command: {}", String.join(" ", command));
-                Process p = pb.start();
-                int exit = p.waitFor();
-                logger.info("ffmpeg exited with status {}", exit);
-            } catch (IOException | InterruptedException e) {
-                Thread.currentThread().interrupt();
-                logger.error("ffmpeg execution failed", e);
-            }
-        }, CompletableFuture.delayedExecutor(1, TimeUnit.SECONDS));
+            logger.info("Starting ffmpeg command: {}", String.join(" ", command));
+            return pb.start();
+        })
+        .flatMap(process -> Mono.fromFuture(process.onExit())
+                .doOnNext(p -> logger.info("ffmpeg exited with status {}", p.exitValue()))
+                .then())
+        .subscribeOn(Schedulers.boundedElastic())
+        .doOnError(e -> logger.error("ffmpeg execution failed", e))
+        .subscribe();
     }
 }
