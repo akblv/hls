@@ -1,0 +1,4 @@
+docker stop zeno-rtmp-server && docker rm zeno-rtmp-server
+docker rmi zeno-rtmp-server
+docker build -t zeno-rtmp-server .
+docker run -d  --name=zeno-rtmp-server -p 1935:1935 -p 80:80 -v /Users/amalkabulov/IdeaProjects/zeno/nginx-hls-voulume:/live zeno-rtmp-server

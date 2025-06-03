@@ -13,14 +13,10 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
 import java.util.regex.Pattern;
 
 
@@ -58,8 +54,8 @@ public class HlsController {
                         logger.warn("Invalid stream name {}", nginxRtmpRequest.name());
                         return ResponseEntity.badRequest().build();
                     }
-                    // start transcoding asynchronously after acknowledging the publish
                     ffmpegService.startTranscoding(nginxRtmpRequest);
+                    // start transcoding asynchronously after acknowledging the publish
                     return ResponseEntity.ok().build();
                 })
                 .doOnError(err -> ResponseEntity.badRequest().build());
@@ -67,9 +63,11 @@ public class HlsController {
     }
 
     @PostMapping("/done")
-    public ResponseEntity<Void> done(@RequestParam Map<String, String> params) {
-        logger.info("Stream ended {}", params);
-        return ResponseEntity.ok().build();
+    public Mono<ResponseEntity<Object>> done(ServerWebExchange request) {
+        return request.getFormData().map(data -> {
+            logger.info("Stream ended {}", data);
+            return ResponseEntity.ok().build();
+        }).doOnError(err -> ResponseEntity.badRequest().build());
 
     }
 
@@ -85,7 +83,8 @@ public class HlsController {
 //            return ResponseEntity.status(307).header("Location", url).build();
 //        }
 
-        String user = request.getRemoteAddress().toString();
+        String user = request.getRemoteAddress().getHostString();
+        logger.info("Serving playlist {} for user {}", playlist, user);
         return hlsService.getPlaylist(stream, playlist, "", user)
                 .map(body -> ResponseEntity.ok()
                         .cacheControl(CacheControl.noCache())
@@ -102,7 +101,8 @@ public class HlsController {
 //            return ResponseEntity.status(307).header("Location", url).build();
 //        }
 
-        String user = request.getRemoteAddress().toString();
+        String user = request.getRemoteAddress().getHostString();
+        logger.info("Serving playlist {} for user {}", playlist, user);
         return hlsService.getPlaylist(stream, playlist, quality, user)
                 .map(body -> ResponseEntity.ok()
                         .cacheControl(CacheControl.noCache())
@@ -112,7 +112,7 @@ public class HlsController {
 
     @GetMapping(value = "{stream}/{segment}.ts", produces = "video/MP2T")
     public Mono<ResponseEntity<Resource>> getSegment(@PathVariable String stream, @PathVariable String segment, ServerHttpRequest request) {
-        String user = request.getRemoteAddress().toString();
+        String user = request.getRemoteAddress().getHostString();
         return hlsService.getSegment(stream, segment, "", user)
                 .map(data -> {
                     logger.debug("Serving segment {}", segment);
@@ -124,7 +124,8 @@ public class HlsController {
 
     @GetMapping(value = "{stream}/{quality}/{segment}.ts", produces = "video/MP2T")
     public Mono<ResponseEntity<Resource>> getSegmentWithQuality(@PathVariable String stream, @PathVariable String quality, @PathVariable String segment, ServerHttpRequest request) {
-        String user = request.getRemoteAddress().toString();
+        String user = request.getRemoteAddress().getHostString();
+        logger.info("Serving segment {} for user {}", segment, user);
         return hlsService.getSegment(stream, segment, quality, user)
                 .map(data -> {
                     logger.debug("Serving segment {} for quality {}", segment, quality);
@@ -136,7 +137,7 @@ public class HlsController {
 
     @GetMapping(value = "{stream}/{quality}/ads/{segment}.ts", produces = "video/MP2T")
     public Mono<ResponseEntity<Resource>> getAdSegment(@PathVariable String stream, @PathVariable String segment, ServerHttpRequest request) {
-        String user = request.getRemoteAddress().toString();
+        String user = request.getRemoteAddress().getHostString();
         return hlsService.getAdSegment(segment, "", user)
                 .map(data -> {
                     logger.debug("Serving ad segment {}", segment);
@@ -148,7 +149,7 @@ public class HlsController {
 
     @GetMapping(value = "{stream}/{quality}/ads/{ad_quality}/{segment}.ts", produces = "video/MP2T")
     public Mono<ResponseEntity<Resource>> getAdSegmentWithQuality(@PathVariable String stream, @PathVariable String ad_quality, @PathVariable String segment, ServerHttpRequest request) {
-        String user = request.getRemoteAddress().toString();
+        String user = request.getRemoteAddress().getHostString();
         return hlsService.getAdSegment(segment, ad_quality, user)
                 .map(data -> {
                     logger.debug("Serving ad segment {} for quality {}", segment, ad_quality);

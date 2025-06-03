@@ -59,7 +59,10 @@ public class HlsService {
                     }
                     Session session = getSession(userId);
                     List<String> lines = new ArrayList<>(Arrays.asList(m3u8.split("\n")));
-                    if (session.shouldInsertAd() && !playlist.equals("master.m3u8")) {
+                    boolean shouldInsertAd = session.shouldInsertAd() && !playlist.equals("master");
+                    logger.info("Session {} should insert ad {}", session.toString(), session.shouldInsertAd());
+                    if (shouldInsertAd) {
+                        session.markAdInserted();
                         lines.add("#EXT-X-DISCONTINUITY");
                         session.getNextAdSegments().forEach(ad -> {
                             lines.add("#EXTINF:" + segmentDurationSeconds + ".0,");
@@ -67,7 +70,6 @@ public class HlsService {
                             lines.add(prefix + ad);
                         });
                         lines.add("#EXT-X-DISCONTINUITY");
-                        session.markAdInserted();
                         logger.info("Insert ad segments into session, {}", String.join("\n", lines));
                     }
                     return String.join("\n", lines);
