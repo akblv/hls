@@ -75,13 +75,13 @@ public class HlsController {
      * Return the playlist with a simple advertisement insertion after every third segment.
      */
     @GetMapping(path = "/{stream}/{playlist}.m3u8", produces = "application/vnd.apple.mpegurl")
-    public Mono<ResponseEntity<?>> getPlaylist(@PathVariable String stream, @PathVariable String playlist, ServerHttpRequest request) {
-//        String token = request.getParameter("zt");
-//        if (!tokenService.isValid(token, name)) {
+    public Mono<ResponseEntity<?>> getPlaylist(@PathVariable String stream, @PathVariable String playlist, @RequestParam String zt,  ServerHttpRequest request) {
+        if (!tokenService.isValid(zt, stream)) {
+            logger.warn("Invalid token {} for stream {}", zt, stream);
 //            String newToken = tokenService.generateToken(name);
 //            String url = request.getRequestURL().toString() + "?zt=" + newToken;
 //            return ResponseEntity.status(307).header("Location", url).build();
-//        }
+        }
 
         String user = request.getRemoteAddress().getHostString();
         logger.info("Serving playlist {} for user {}", playlist, user);
