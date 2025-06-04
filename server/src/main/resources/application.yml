@@ -25,8 +25,12 @@ service:
         url: ${ES_SESSIONS_URL:https://streaming-es.zenomedia.com:433}
         index: ${ES_SESSIONS_INDEX:dev-zeno-streaming-sessions-*}
     media-service: ${MEDIA_SERVICE_URL:https://stream-admedia-dev.zenomedia.com}
-    session-context: ${SESSION_CONTEXT_SERVICE_URL:https://stream-lc-dev.zenomedia.com/contexts}
     traffic-manager: ${TRAFFIC_MANAGER_SERVICE_URL:https://stream-tm-dev.zenomedia.com/actions}
+
+sessioncontext:
+  url: ${SESSION_CONTEXT_SERVICE_URL:https://stream-lc-dev.zenomedia.com/contexts}
+  requests:
+    timeout: 5000
 
 
 keystore:
