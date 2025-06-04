@@ -32,13 +32,16 @@ public class SessionTokenService {
         }
 
         long now = System.currentTimeMillis();
-        final SessionTokenParams params = sessionTokenManager.getParams(token);
+        final SessionTokenParams params = getParams(token);
         logger.info("Params {}", params);
         logger.info("Expired: {}", params.getExpiration() > now);
         logger.info("Stream equals {}", Objects.equals(stream, params.getStream()));
         logger.info("Hostnames contains {}", serverHostNames.contains(params.getHost()));
 
-
         return true;
+    }
+
+    public SessionTokenParams getParams(final String token) {
+        return sessionTokenManager.getParams(token);
     }
 }

@@ -1,9 +1,7 @@
-package com.zenomedia.logic;
+package com.example.hls.service.session;
 
-import com.zenomedia.Sys;
+import com.example.hls.util.JsonConverter;
 import com.zenomedia.common.model.events.session.*;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,52 +9,52 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
-import com.example.hls.util.JsonConverter;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.Objects;
 
 @Service
 public class SessionContextService {
     private static final Logger logger = LoggerFactory.getLogger(SessionContextService.class);
 
     private final WebClient webClient;
-    private volatile String sessionContextUrl;
+    private String sessionContextUrl;
+    private final String localPublicIp;
     private final long timeoutMillis;
-    private final Counter errorsCounter;
     private final JsonConverter converter;
     private final Map<String, String> upstreamsCache = new ConcurrentHashMap<>();
 
-    public SessionContextService(WebClient webClient,
-                                 MeterRegistry meterRegistry,
-                                 JsonConverter converter,
-                                 @Value("${sessioncontext.url}") String sessionContextUrl,
+    public SessionContextService(final WebClient webClient,
+                                 final JsonConverter converter,
+                                 @Value("${service.session-context.url}") String sessionContextUrl,
+                                 @Value("${local.external.ip}") String localPublicIp,
                                  @Value("${sessioncontext.requests.timeout:5000}") long timeoutMillis) {
         this.webClient = webClient;
         this.converter = converter;
         this.sessionContextUrl = sessionContextUrl;
+        this.localPublicIp = localPublicIp;
         this.timeoutMillis = timeoutMillis;
-        this.errorsCounter = meterRegistry.counter("stream.session.context.errors");
     }
 
     /**
      * Update the session context service URL at runtime.
      */
-    public void setSessionContextUrl(String sessionContextUrl) {
+    public void updateSessionContextUrl(String sessionContextUrl) {
         this.sessionContextUrl = sessionContextUrl;
     }
 
     public Mono<SessionContext> requestEnhancedSessionContext(ServerHttpRequest request,
                                                               String stream,
                                                               String sessionId) {
-        logger.debug("Requesting enhanced session context");
+        logger.info("Requesting enhanced session context");
         SessionContext sessionContext = getSessionContext(request, stream, sessionId);
         String query = request.getURI().getQuery();
         String urlWithQuery = (Objects.nonNull(query) && !query.isEmpty()) ? sessionContextUrl + "?" + query : sessionContextUrl;
@@ -69,9 +67,9 @@ public class SessionContextService {
                 .exchangeToMono(resp -> handleResponse(resp, sessionContext, stream))
                 .timeout(Duration.ofMillis(timeoutMillis))
                 .doOnError(err -> {
-                    logger.error(String.format("Failed to get listener context from: %s, IP: %s, for stream: %s",
-                            sessionContextUrl, sessionContext.getConnection().getClientIp(), stream), err);
-                    errorsCounter.increment();
+                    logger.error("Failed to get listener context from: {}, IP: {}, for stream:{}! Error {}",
+                            sessionContextUrl, sessionContext.getConnection().getClientIp(), stream, err.getMessage(), err);
+//                    errorsCounter.increment();
                 })
                 .onErrorReturn(sessionContext);
     }
@@ -98,17 +96,17 @@ public class SessionContextService {
         } else {
             return response.bodyToMono(String.class).defaultIfEmpty("")
                     .map(body -> {
-                        logger.error(String.format("Failed to get listener context from: %s, for stream: %s, IP: %s, response: %d %s %s",
+                        logger.error("Failed to get listener context from: {}, for stream: {}, IP: {}, response: {} {} {}",
                                 sessionContextUrl, stream, sessionContext.getConnection().getClientIp(),
-                                response.rawStatusCode(), response.statusCode().getReasonPhrase(), body));
-                        errorsCounter.increment();
+                                response.statusCode().value(), response.logPrefix(), body);
+//                        errorsCounter.increment();
                         return sessionContext;
                     });
         }
     }
 
     private SessionContext getSessionContext(ServerHttpRequest request, String stream, String sessionId) {
-        String ipOverride = Sys.conf.hasPath("local.external.ip") ? Sys.conf.getString("local.external.ip") : null;
+        String ipOverride = StringUtils.hasText(localPublicIp) ? localPublicIp : null;
 
         InetSocketAddress local = request.getLocalAddress();
         InetSocketAddress remote = request.getRemoteAddress();
@@ -121,7 +119,7 @@ public class SessionContextService {
                 .build();
 
         RequestInfo requestInfo = RequestInfo.builder()
-                .method(request.getMethodValue())
+                .method(request.getMethod().name())
                 .uri(request.getURI().toString())
                 .headers(request.getHeaders().toSingleValueMap())
                 .build();
@@ -151,7 +149,7 @@ public class SessionContextService {
                 .name(params.get(params.containsKey("dist") ? "dist" : "DIST"))
                 .build();
 
-        Content.Builder contentBuilder = Content.builder().stream(stream);
+        Content.ContentBuilder contentBuilder = Content.builder().stream(stream);
         String upstream = upstreamsCache.get(stream);
         if (Objects.nonNull(upstream)) {
             contentBuilder.upstream(upstream);

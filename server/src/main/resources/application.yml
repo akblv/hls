@@ -13,25 +13,30 @@ hls:
   output-path: /Users/amalkabulov/IdeaProjects/zeno/nginx-hls-voulume/hls
 
 service:
-  url:
-    load-balancer: ${LOAD_BALANCER_SERVICE_URL:https://stream-dev.zeno.fm}
-    #    load-balancer: "http://localhost:8080"
-    stream-base: ${STREAM_BASE_URL:https://upstream-dev.zenomedia.com}
-    elasticsearch:
-      ads:
-        url: ${ES_ADS_URL:https://ads-es.zenomedia.com:443}
-        index: ${ES_ADS_INDEX:dev-ad-events*}
-      sessions:
-        url: ${ES_SESSIONS_URL:https://streaming-es.zenomedia.com:433}
-        index: ${ES_SESSIONS_INDEX:dev-zeno-streaming-sessions-*}
-    media-service: ${MEDIA_SERVICE_URL:https://stream-admedia-dev.zenomedia.com}
-    traffic-manager: ${TRAFFIC_MANAGER_SERVICE_URL:https://stream-tm-dev.zenomedia.com/actions}
+  load-balancer:
+    url: ${LOAD_BALANCER_SERVICE_URL:https://stream-dev.zeno.fm}
+  #    load-balancer: "http://localhost:8080"
+  stream-base:
+    url: ${STREAM_BASE_URL:https://upstream-dev.zenomedia.com}
+  elasticsearch:
+    ads:
+      url: ${ES_ADS_URL:https://ads-es.zenomedia.com:443}
+      index: ${ES_ADS_INDEX:dev-ad-events*}
+    sessions:
+      url: ${ES_SESSIONS_URL:https://streaming-es.zenomedia.com:433}
+      index: ${ES_SESSIONS_INDEX:dev-zeno-streaming-sessions-*}
+  media-service:
+    url: ${MEDIA_SERVICE_URL:https://stream-admedia-dev.zenomedia.com}
+  session-context:
+    url: ${SESSION_CONTEXT_SERVICE_URL:https://stream-lc-dev.zenomedia.com/contexts}
+    requests:
+      timeout: 5000
+  traffic-manager:
+    url: ${TRAFFIC_MANAGER_SERVICE_URL:https://stream-tm-dev.zenomedia.com/actions}
 
-sessioncontext:
-  url: ${SESSION_CONTEXT_SERVICE_URL:https://stream-lc-dev.zenomedia.com/contexts}
-  requests:
-    timeout: 5000
-
+local:
+  external:
+    ip: 127.0.0.1
 
 keystore:
   jks: ${KEYSTORE_JKS:/home/jenkins/pki/jenkins.jks}

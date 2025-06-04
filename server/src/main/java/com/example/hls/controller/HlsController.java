@@ -3,7 +3,9 @@ package com.example.hls.controller;
 import com.example.hls.model.NginxRtmpRequest;
 import com.example.hls.service.FfmpegService;
 import com.example.hls.service.HlsService;
+import com.example.hls.service.session.SessionContextService;
 import com.example.hls.service.session.SessionTokenService;
+import com.zenomedia.session.common.model.SessionTokenParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
@@ -30,16 +33,19 @@ public class HlsController {
     private final HlsService hlsService;
     private final SessionTokenService tokenService;
     private final FfmpegService ffmpegService;
+    private final SessionContextService sessionContextService;
+
 
     @Autowired
-    public HlsController(HlsService hlsService, SessionTokenService tokenService, FfmpegService ffmpegService) {
+    public HlsController(HlsService hlsService, SessionTokenService tokenService, FfmpegService ffmpegService, SessionContextService sessionContextService) {
         this.hlsService = hlsService;
         this.tokenService = tokenService;
         this.ffmpegService = ffmpegService;
+        this.sessionContextService = sessionContextService;
     }
 
     boolean isStreamValid(String stream) {
-        return stream != null && STREAM_PATTERN.matcher(stream).matches();
+        return StringUtils.hasText(stream) && STREAM_PATTERN.matcher(stream).matches();
     }
 
 
@@ -78,14 +84,18 @@ public class HlsController {
         if (!tokenService.isValid(zt, stream)) {
             logger.warn("Invalid token {} for stream {}", zt, stream);
         }
+        final SessionTokenParams params = tokenService.getParams(zt);
+        return sessionContextService.requestEnhancedSessionContext(request, stream, params.getId()).flatMap(sessionContext -> {
+            String user = request.getRemoteAddress().getHostString();
+            logger.info("Serving playlist {} for user {}", playlist, user);
+            return hlsService.getPlaylist(stream, playlist, "", user)
+                    .map(body -> ResponseEntity.ok()
+                            .cacheControl(CacheControl.noCache())
+                            .contentType(MediaType.valueOf("application/vnd.apple.mpegurl"))
+                            .body(body));
+        });
 
-        String user = request.getRemoteAddress().getHostString();
-        logger.info("Serving playlist {} for user {}", playlist, user);
-        return hlsService.getPlaylist(stream, playlist, "", user)
-                .map(body -> ResponseEntity.ok()
-                        .cacheControl(CacheControl.noCache())
-                        .contentType(MediaType.valueOf("application/vnd.apple.mpegurl"))
-                        .body(body));
+
     }
 
     @GetMapping(path = "{stream}/{quality}/{playlist}.m3u8", produces = "application/vnd.apple.mpegurl")

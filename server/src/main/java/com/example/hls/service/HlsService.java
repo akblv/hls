@@ -1,6 +1,7 @@
 package com.example.hls.service;
 
 import ch.qos.logback.core.util.StringUtil;
+import com.example.hls.service.session.SessionContextService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,6 +12,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import com.example.hls.model.Session;
+
 import java.util.*;
 
 @Service
@@ -36,7 +38,8 @@ public class HlsService {
     private final SessionService sessionService;
 
     @Autowired
-    public HlsService(WebClient webClient, SessionService sessionService) {
+    public HlsService(final WebClient webClient,
+                      final SessionService sessionService) {
         this.webClient = webClient;
         this.sessionService = sessionService;
     }
@@ -51,6 +54,7 @@ public class HlsService {
         String baseUrl = String.format("%s/%s", originBaseUrl, streamName);
         String base = buildQualityPath(baseUrl, quality);
         String url = base + "/" + playlist + ".m3u8";
+
         return webClient.get().uri(url).retrieve().bodyToMono(String.class)
                 .defaultIfEmpty("")
                 .map(m3u8 -> {
